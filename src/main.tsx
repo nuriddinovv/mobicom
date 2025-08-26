@@ -7,6 +7,9 @@ import "./index.css";
 import { Toaster } from "react-hot-toast";
 import Clients from "./pages/Clients";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
+import IncomingPayment from "./pages/IncomingPayment";
+import OutgoingPayment from "./pages/OutgoingPayment";
+import Verification from "./pages/Verification";
 
 const router = createBrowserRouter([
   { path: "/", element: <Login /> },
@@ -39,6 +42,30 @@ const router = createBrowserRouter([
     element: (
       <Protected>
         <ChartOfAccounts />
+      </Protected>
+    ),
+  },
+  {
+    path: "/incoming-payment",
+    element: (
+      <Protected>
+        <IncomingPayment />
+      </Protected>
+    ),
+  },
+  {
+    path: "/outgoing-payment",
+    element: (
+      <Protected>
+        <OutgoingPayment />
+      </Protected>
+    ),
+  },
+  {
+    path: "/verification",
+    element: (
+      <Protected>
+        <Verification />
       </Protected>
     ),
   },
