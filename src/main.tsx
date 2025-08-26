@@ -10,6 +10,7 @@ import ChartOfAccounts from "./pages/ChartOfAccounts";
 import IncomingPayment from "./pages/IncomingPayment";
 import OutgoingPayment from "./pages/OutgoingPayment";
 import Verification from "./pages/Verification";
+import AccountingTransaction from "./pages/AccountingTransaction";
 
 const router = createBrowserRouter([
   { path: "/", element: <Login /> },
@@ -41,7 +42,7 @@ const router = createBrowserRouter([
     path: "/accounting-transaction",
     element: (
       <Protected>
-        <ChartOfAccounts />
+        <AccountingTransaction />
       </Protected>
     ),
   },
