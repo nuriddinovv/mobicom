@@ -1,7 +1,7 @@
 // RadioGroup.tsx
 import { useId } from "react";
 
-type Role = "customer" | "supplier" | "account";
+type Role = "CUSTOMER" | "SUPPLIER";
 
 export default function PartyType({
   value,
@@ -13,7 +13,7 @@ export default function PartyType({
   const name = useId(); // bitta guruh uchun yagona name
 
   const Item = ({ val, label }: { val: Role; label: string }) => (
-    <label className="flex items-center gap-2 cursor-pointer select-none text-gray-700 text-sm">
+    <label className="flex items-center gap-2 cursor-pointer select-none text-gray-700 text-sm hidden">
       <input
         type="radio"
         name={name}
@@ -28,9 +28,8 @@ export default function PartyType({
 
   return (
     <div className="flex flex-col gap-2">
-      <Item val="customer" label="Заказчик" />
-      <Item val="supplier" label="Поставщик" />
-      <Item val="account" label="Счёт" />
+      <Item val="CUSTOMER" label="Заказчик" />
+      <Item val="SUPPLIER" label="Поставщик" />
     </div>
   );
 }

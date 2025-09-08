@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import useFetch from "../api/useFetch";
-import { ChartOfAccounts as fetchChartOfAccounts } from "../api/get";
+import { ChartOfAccountsApi as fetchChartOfAccounts } from "../api/get";
 import type { chartOfAccountsResponse } from "../interfaces";
 
 export default function ChartOfAccounts() {
@@ -107,7 +107,7 @@ export default function ChartOfAccounts() {
         )}
         {!error && !loading && sessionId && data && (
           <div
-            className="overflow-x-auto max-h-[85vh] rounded-lg border border-gray-200 bg-white shadow-sm"
+            className="overflow-x-auto max-h-[85vh] rounded-md border border-gray-200 bg-white shadow-sm"
             style={{ scrollbarColor: "transparent", scrollbarWidth: "none" }}
           >
             <table className="min-w-full divide-y divide-gray-200 text-sm">

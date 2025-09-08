@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import useFetch from "../api/useFetch";
-import { BusinessPartners } from "../api/get";
+import { BusinessPartnersApi } from "../api/get";
 import type { businessPartnersResponse } from "../interfaces";
 
 export default function Clients() {
@@ -29,7 +29,7 @@ export default function Clients() {
   }, []);
 
   const { loading, error, data, refetch } = useFetch(
-    () => BusinessPartners({ sessionId: sessionId ?? "", Query: q }),
+    () => BusinessPartnersApi({ sessionId: sessionId ?? "", Query: q }),
     false
   );
 

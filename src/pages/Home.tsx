@@ -1,8 +1,33 @@
 import { Link, Outlet } from "react-router-dom";
+import useFetch from "../api/useFetch";
+import { CurrentExchangeRateApi } from "../api/get";
+import { useEffect } from "react";
+import CustomLoader from "../components/CustomLoader";
+import toast from "react-hot-toast";
 
 export default function Home() {
+  const sessionID = sessionStorage.getItem("sessionId");
+
+  const { loading, error, data, refetch } = useFetch(
+    () => CurrentExchangeRateApi({ sessionId: sessionID || '11' }),
+    false
+  );
+  useEffect(() => {
+    if (sessionID) {
+      refetch();
+    }
+  }, [sessionID]);
+
+  useEffect(() => {
+    if (data) {
+      localStorage.setItem("CurrentExchangeRate", data.rate.toString());
+    }
+  }, [data]);
+
   return (
     <div className="container">
+      {loading && <CustomLoader />}
+      {error && toast.error("Произошла ошибка")}
       <h1 className="text-4xl font-bold mb-8 mt-4 text-center">Home Panel</h1>
 
       <div className="xl:px-20">

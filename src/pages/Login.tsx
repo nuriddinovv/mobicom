@@ -88,8 +88,7 @@ export default function Login() {
           disabled={loading}
           type="submit"
           className="flex w-full h-10 justify-center items-center rounded-md bg-red-600 px-3 py-1.5 text-sm/6 font-semibold 
-                   text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 
-                   focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                   text-white shadow-sm cursor-pointer"
         >
           {loading ? (
             <SyncLoader size={8} speedMultiplier={0.7} color="#ffffff" />

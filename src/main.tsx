@@ -7,10 +7,14 @@ import "./index.css";
 import { Toaster } from "react-hot-toast";
 import Clients from "./pages/Clients";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
-import IncomingPayment from "./pages/IncomingPayment";
-import OutgoingPayment from "./pages/OutgoingPayment";
+import IncomingPayment from "./pages/IncomingPayments/IncomingPayment";
 import Verification from "./pages/Verification";
 import AccountingTransaction from "./pages/AccountingTransaction";
+import IncomingPaymentID from "./pages/IncomingPayments/IncomingPaymentID";
+import AddIncomingPayment from "./pages/IncomingPayments/AddIncomingPayment";
+import AddOutgoingPayment from "./pages/OutgoingPayments/AddOutgoingPayment";
+import OutgoingPaymentID from "./pages/OutgoingPayments/OutgoingPaymentID";
+import OutgoingPayment from "./pages/OutgoingPayments/OutgoingPayment";
 
 const router = createBrowserRouter([
   { path: "/", element: <Login /> },
@@ -55,10 +59,42 @@ const router = createBrowserRouter([
     ),
   },
   {
+    path: "/incoming-payment/:id",
+    element: (
+      <Protected>
+        <IncomingPaymentID />
+      </Protected>
+    ),
+  },
+  {
+    path: "/incoming-payment-add",
+    element: (
+      <Protected>
+        <AddIncomingPayment />
+      </Protected>
+    ),
+  },
+  {
     path: "/outgoing-payment",
     element: (
       <Protected>
         <OutgoingPayment />
+      </Protected>
+    ),
+  },
+  {
+    path: "/outgoing-payment/:id",
+    element: (
+      <Protected>
+        <OutgoingPaymentID />
+      </Protected>
+    ),
+  },
+  {
+    path: "/outgoing-payment-add",
+    element: (
+      <Protected>
+        <AddOutgoingPayment />
       </Protected>
     ),
   },
@@ -74,7 +110,7 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <>
-    <Toaster position="top-center" reverseOrder={false} />{" "}
+    <Toaster position="top-center" reverseOrder={false} />
     <RouterProvider router={router} />
   </>
 );

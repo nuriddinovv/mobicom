@@ -1,0 +1,656 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import PartyType from "../../components/RadioGroup";
+import useFetch from "../../api/useFetch";
+import CustomLoader from "../../components/CustomLoader";
+import { formatDate } from "../../utils/formatDate";
+import {
+  BusinessPartnersApi,
+  ChartOfAccountsApi,
+  PaymentOpenApi,
+} from "../../api/get";
+import type {
+  businessPartnersResponse,
+  chartOfAccountsResponse,
+  Payment,
+  PaymentInvoices,
+} from "../../interfaces";
+import toast from "react-hot-toast";
+
+// ===================== Helpers (guruhlangan) =====================
+const todayStr = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const parseExRate = (s: string | null): number => {
+  const n = Number(String(s ?? "0").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : 1;
+};
+
+const clamp = (n: number, min: number, max: number) =>
+  Math.min(Math.max(n, min), max);
+
+const calcTotals = (invoices: PaymentInvoices[], exRate: number) => {
+  const checked = invoices.filter((x) => x.isChecked);
+  const acc = checked.reduce(
+    (t, it) => {
+      const amt = Number(it.appliedSum) || 0;
+      if (it.currency === "USD") t.usd += amt;
+      else if (it.currency === "UZS") t.uzs += amt;
+      return t;
+    },
+    { usd: 0, uzs: 0 }
+  );
+  const usdFromUZS = acc.uzs / exRate;
+  const usdTotal = acc.usd + usdFromUZS;
+  const uzsTotal = usdTotal * exRate;
+  return { totalUSD: usdTotal, totalUZS: uzsTotal };
+};
+
+const buildPayload = (args: {
+  base: businessPartnersResponse | null;
+  invoices: PaymentInvoices[];
+  totals: { totalUSD: number; totalUZS: number };
+  date: string;
+  currency: "USD" | "UZS" | string;
+  acctCode: string;
+  type: "CUSTOMER" | "SUPPLIER";
+  exRate: number;
+}) => {
+  const { base, invoices, totals, date, currency, acctCode, exRate } = args;
+  const selected = invoices.filter((x) => x.isChecked);
+
+  if (!base) {
+    throw new Error("Partner data is required");
+  }
+
+  return {
+    docType: "C",
+    canceled: false,
+    docDate: date,
+    cardCode: base.cardCode,
+    cardName: base.cardName,
+    account: acctCode,
+    noDocSum: 0,
+    noDocSumFC: 0,
+    payNoDoc: false,
+    comments: null,
+    docTotal: Number(totals.totalUSD.toFixed(2)),
+    docTotalFC: Math.round(totals.totalUZS),
+    docCurrency: currency,
+    docRate: exRate,
+    paymentInvoices: selected.map((it) => ({
+      ...it,
+      appliedSum: Number(it.appliedSum) || 0,
+    })),
+  };
+};
+
+const postInPayment = async (payload: any, sessionId: string | null) => {
+  const res = await fetch("/api/InPayments", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-Session-Id": sessionId ?? "",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let json: any = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    // server text qaytargan bo'lishi mumkin
+  }
+  if (!res.ok) {
+    const msg =
+      (json && (json.error?.message || json.message)) ||
+      text ||
+      `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return json ?? { ok: true };
+};
+// =================== /Helpers ===================
+
+export default function AddIncomingPayment() {
+  // ------- Local storages -------
+  const sessionId = sessionStorage.getItem("sessionId");
+  const CurrentExchangeRate = localStorage.getItem("CurrentExchangeRate");
+  const exRate = useMemo(
+    () => parseExRate(CurrentExchangeRate),
+    [CurrentExchangeRate]
+  );
+
+  // ------- UI state -------
+  const [paymentInvoices, setPaymentInvoices] = useState<PaymentInvoices[]>([]);
+  const [partnerData, setPartnerData] =
+    useState<businessPartnersResponse | null>(null);
+  const [currency, setCurrency] = useState<string>("UZS");
+  const [date, setDate] = useState<string>(todayStr());
+  const [type, setType] = useState<"CUSTOMER" | "SUPPLIER">("CUSTOMER");
+  const [acctCode, setAcctCode] = useState<string>("");
+  const [acctName, setAcctName] = useState<string>("");
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const [chartOfAccountsModalVisible, setChartModalVisible] = useState(false);
+
+  // Search/pagination (Payments modal)
+  const [q, setQ] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [page, setPage] = useState(1);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Partner select (CardCode)
+  const [selectedCardCode, setSelectedCardCode] = useState<string | null>(null);
+
+  // ------- API calls -------
+  const { loading, error, data, refetch } = useFetch(
+    () => PaymentOpenApi({ CardCode: selectedCardCode ?? "" }),
+    false
+  );
+
+  const {
+    error: ChartError,
+    data: ChartData,
+    refetch: chartRefetch,
+  } = useFetch(() =>
+    ChartOfAccountsApi({
+      Query: q,
+      sessionId: sessionId || "123",
+      Curr: currency,
+    })
+  );
+
+  useEffect(() => {
+    chartRefetch();
+  }, [currency]);
+
+  const {
+    error: PartnersError,
+    data: PartnersData,
+    refetch: partnersRefetch,
+  } = useFetch(() =>
+    BusinessPartnersApi({ Query: q, sessionId: sessionId || "123" })
+  );
+
+  // CardCode o'zgarsa: open invoices ni olamiz
+  useEffect(() => {
+    if (selectedCardCode) refetch();
+  }, [selectedCardCode]);
+
+  // Open invoices kelganda Payment ichiga normalizatsiya qilib qo'yamiz
+  useEffect(() => {
+    if (data?.data) {
+      setPaymentInvoices(data.data);
+    }
+  }, [data]);
+
+  // Type-to-search debounce
+  useEffect(() => {
+    if (!typing) return;
+    const t = setTimeout(() => setTyping(false), 700);
+    return () => clearTimeout(t);
+  }, [typing]);
+
+  // Q o'zgarsa refetch
+  useEffect(() => {
+    if (!typing && q !== "") {
+      setPage(1);
+      partnersRefetch();
+      chartRefetch();
+    }
+  }, [typing, q]);
+
+  // Bo'sh q bo'lsa barchasini qayta olamiz
+  useEffect(() => {
+    if (q === "") {
+      partnersRefetch();
+      chartRefetch();
+    }
+  }, [q]);
+
+  // Paging scroll top
+  useEffect(() => {
+    partnersRefetch();
+    listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page]);
+
+  // Totals (faqat isChecked)
+  const { totalUSD, totalUZS } = useMemo(() => {
+    return calcTotals(paymentInvoices, exRate);
+  }, [paymentInvoices, exRate]);
+
+  // ------- Submit -------
+  const [postLoading, setPostLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      if (!acctCode) return toast.error("Выберите cчет!");
+      if (!partnerData) return toast.error("Выберите партнера!");
+
+      const selected = paymentInvoices.filter((x) => x.isChecked);
+      if (!selected.length)
+        return toast.error("Hech bo'lmasa bitta invoys belgilang");
+
+      const payload = buildPayload({
+        base: partnerData,
+        invoices: selected,
+        totals: { totalUSD, totalUZS },
+        date,
+        currency,
+        acctCode,
+        type,
+        exRate,
+      });
+
+      setPostLoading(true);
+      const json = await postInPayment(payload, sessionId);
+      toast.success("Success");
+      // reset minimal
+      setPaymentInvoices([]);
+      setPartnerData(null);
+      setSelectedCardCode(null);
+      setQ("");
+      setPage(1);
+      console.log("Server:", json);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Произошла ошибка");
+    } finally {
+      setPostLoading(false);
+    }
+  };
+
+  // ------- Error toasts (1 marta per change) -------
+  useEffect(() => {
+    if (error) toast.error(data?.error?.message || "Произошла ошибка");
+  }, [error, data]);
+  useEffect(() => {
+    if (PartnersError) toast.error("Произошла ошибка - BusinessPartners");
+  }, [PartnersError]);
+  useEffect(() => {
+    if (ChartError) toast.error("Счетлар ro'yxatini olishda xatolik");
+  }, [ChartError]);
+
+  return (
+    <div className="p-4">
+      {(loading || postLoading) && <CustomLoader />}
+
+      <div className="grid grid-cols-4">
+        {/* LEFT */}
+        <div className="col-span-3 h-[95vh] border border-r-0 rounded-l-md">
+          <p className="bg-slate-200 py-1 text-xl text-center rounded-tl-md">
+            Bходящий платежи
+          </p>
+
+          <div className="grid grid-cols-8 p-1 gap-2">
+            <div className="flex flex-col col-span-3 gap-1">
+              <div className="flex items-center gap-1 w-full">
+                <p className="text-sm w-full">Код</p>
+                <input
+                  type="text"
+                  readOnly
+                  value={partnerData?.cardCode ?? ""}
+                  onClick={() => setModalVisible(true)}
+                  className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 cursor-pointer"
+                />
+              </div>
+              <div className="flex items-center gap-1 w-full">
+                <p className="text-sm w-full">Название</p>
+                <input
+                  type="text"
+                  readOnly
+                  value={partnerData?.cardName ?? ""}
+                  className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                />
+              </div>
+            </div>
+
+            <div className="col-span-2 mx-auto">
+              <PartyType value={type} onChange={setType} />
+            </div>
+
+            <div className="flex flex-col col-span-3 gap-1">
+              <div className="flex items-center gap-6 w-full">
+                <p className="text-sm w-full">#</p>
+                <input
+                  type="text"
+                  className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                />
+              </div>
+              <div className="flex items-center gap-6 w-full">
+                <p className="text-sm w-full">Дата регистрации</p>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-1">
+            <div className="overflow-x-auto overflow-y-auto rounded-md w-full h-[50vh] border border-gray-200">
+              <table className="text-sm text-left w-full">
+                <thead className="sticky top-0 z-10 bg-gray-100 uppercase">
+                  <tr>
+                    <th className="py-2 px-2 whitespace-nowrap text-center">
+                      Выбрано
+                    </th>
+                    <th className="py-2 px-2 whitespace-nowrap text-center">
+                      Номер документа
+                    </th>
+                    <th className="py-2 px-2 whitespace-nowrap text-center">
+                      Тип документа
+                    </th>
+                    <th className="py-2 px-6 whitespace-nowrap text-center">
+                      Дата
+                    </th>
+                    <th className="py-2 px-4 whitespace-nowrap text-center">
+                      Итого
+                    </th>
+                    <th className="py-2 px-2 whitespace-nowrap text-center">
+                      Открытая сумма
+                    </th>
+                    <th className="py-2 px-2 whitespace-nowrap text-center">
+                      Сумма платежа
+                    </th>
+                    <th className="py-2 px-2 whitespace-nowrap text-center">
+                      Валюта
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {paymentInvoices?.map((item, idx) => {
+                    const absOpen = Math.abs(Number(item.openSum) || 0);
+                    const minVal = -absOpen;
+                    const maxVal = absOpen;
+                    return (
+                      <tr
+                        key={item.invoiceDocEntry}
+                        className="bg-white border-b border-gray-200"
+                      >
+                        <th className="text-center">
+                          <input
+                            type="checkbox"
+                            className="cursor-pointer"
+                            checked={!!item.isChecked}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setPaymentInvoices((prev) => {
+                                const next = [...prev];
+                                next[idx] = {
+                                  ...next[idx],
+                                  isChecked: checked,
+                                };
+                                return next;
+                              });
+                            }}
+                          />
+                        </th>
+                        <td className="px-1 border-x text-center border-gray-200">
+                          {item.invoiceDocNum}
+                        </td>
+                        <td className="px-1 border-x text-center border-gray-200">
+                          {item.objectCode}
+                        </td>
+                        <td className="px-1 border-x border-gray-200 text-right">
+                          {formatDate(item.invoiceDate)}
+                        </td>
+                        <td className="px-1 border-x border-gray-200 text-center">
+                          {item.invoiceTotal}
+                        </td>
+                        <td className="px-1 border-x border-gray-200 text-center">
+                          {item.openSum}
+                        </td>
+                        <td className="px-1 border-x text-right">
+                          <input
+                            type="text"
+                            step="0.01"
+                            className="outline-none text-right w-24"
+                            min={minVal}
+                            max={maxVal}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              const n = raw === "" ? 0 : Number(raw);
+                              if (!Number.isFinite(n)) return;
+                              const clampedVal = clamp(n, minVal, maxVal);
+                              setPaymentInvoices((prev) => {
+                                const next = [...prev];
+                                next[idx] = {
+                                  ...next[idx],
+                                  appliedSum: clampedVal,
+                                };
+                                return next;
+                              });
+                            }}
+                            onBlur={(e) => {
+                              const n = Number(e.target.value || 0);
+                              const c = clamp(n, minVal, maxVal);
+                              if (n !== c) e.target.value = String(c);
+                            }}
+                          />
+                        </td>
+                        <td className="px-1 border-x border-gray-200 text-right">
+                          {item.currency}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid grid-cols-2 py-2">
+              <div className="flex flex-col col-span-1 gap-1">
+                <div className="flex items-center gap-1 w-full">
+                  <p className="text-sm w-full">Сумма к оплате (USD)</p>
+                  <input
+                    type="text"
+                    readOnly
+                    value={Number(totalUSD).toLocaleString()}
+                    className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                  />
+                </div>
+                <div className="flex items-center gap-1 w-full">
+                  <p className="text-sm w-full">Сумма к оплате (UZS)</p>
+                  <input
+                    type="text"
+                    readOnly
+                    value={Math.round(totalUZS).toLocaleString()}
+                    className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 items-center w-full justify-end">
+              <button
+                onClick={handleSubmit}
+                disabled={postLoading}
+                className="border py-1 px-2 rounded-md cursor-pointer disabled:opacity-50"
+              >
+                OK
+              </button>
+              <button className="border py-1 px-2 rounded-md cursor-pointer">
+                Отменить
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT */}
+        <div className="col-span-1 h-[95vh] border rounded-r-md">
+          <p className="bg-slate-200 py-1 text-xl text-center rounded-tr-md">
+            Методы платежа
+          </p>
+          <div className="p-1">
+            <div className="flex flex-col col-span-1 gap-1">
+              <div className="flex items-center gap-1 w-full">
+                <p className="text-sm w-full">Валюта</p>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="border w-full text-center rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                >
+                  <option value="UZS">UZS</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1 w-full">
+                <p className="text-sm w-full">Курс</p>
+                <input
+                  type="text"
+                  readOnly
+                  value={`${exRate} UZS`}
+                  className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 text-end"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 w-full">
+              <button
+                onClick={() => setChartModalVisible(true)}
+                className="flex items-center gap-1 w-full py-2"
+              >
+                <p className="text-sm w-full text-left">Счет: </p>
+                <div className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 text-end">
+                  <p className="text-sm w-full text-right">
+                    {acctCode} - {acctName}
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PARTNER MODAL */}
+      <div className="relative flex justify-center items-center">
+        <div
+          style={{
+            display: modalVisible ? "block" : "none",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 50,
+          }}
+          className="w-full h-full top-0 fixed sticky-0"
+        >
+          <div className="2xl:container w-[100vw] h-[100vh] mx-auto flex justify-center items-center">
+            <div className="relative bg-white p-4 w-[560px]">
+              <div className="w-full justify-end flex mb-4">
+                <button
+                  onClick={() => setModalVisible(false)}
+                  aria-label="close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="w-full">
+                <input
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setTyping(true);
+                  }}
+                  type="search"
+                  placeholder="Поиск..."
+                  className="w-full border rounded-md border-gray-300 px-2 py-2 outline-none"
+                />
+                <div
+                  ref={listRef}
+                  style={{
+                    scrollbarColor: "transparent",
+                    scrollbarWidth: "none",
+                  }}
+                  className="overflow-y-scroll h-[75vh] divide-y-0"
+                >
+                  {PartnersData?.map((item: businessPartnersResponse) => (
+                    <div
+                      onClick={() => {
+                        setPartnerData(item);
+                        setSelectedCardCode(item.cardCode);
+                        setModalVisible(false);
+                      }}
+                      key={item.cardCode}
+                      className="m-2 gap-4 border-b border-gray-300 cursor-pointer flex items-center"
+                    >
+                      <p>{item.cardCode}</p>
+                      <p>-</p>
+                      <p>{item.cardName}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CHART OF ACCOUNTS MODAL */}
+      <div className="relative flex justify-center items-center">
+        <div
+          style={{
+            display: chartOfAccountsModalVisible ? "block" : "none",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 50,
+          }}
+          className="w-full h-full top-0 fixed sticky-0"
+        >
+          <div className="2xl:container w-[100vw] h-[100vh] mx-auto flex justify-center items-center">
+            <div className="relative bg-white p-4 w-[560px]">
+              <div className="w-full justify-end flex mb-4">
+                <button
+                  onClick={() => setChartModalVisible(false)}
+                  aria-label="close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="w-full">
+                <input
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setTyping(true);
+                  }}
+                  type="search"
+                  placeholder="Поиск..."
+                  className="w-full border rounded-md border-gray-300 px-2 py-2 outline-none"
+                />
+                <div
+                  style={{
+                    scrollbarColor: "transparent",
+                    scrollbarWidth: "none",
+                  }}
+                  className="overflow-y-scroll h-[75vh] divide-y-0"
+                >
+                  {ChartData?.map((item: chartOfAccountsResponse) => (
+                    <div
+                      onClick={() => {
+                        setAcctCode(item.acctCode);
+                        setAcctName(item.acctName);
+                        setChartModalVisible(false);
+                      }}
+                      key={item.acctCode}
+                      className="m-2 border-b border-gray-300 cursor-pointer flex gap-4 items-center"
+                    >
+                      <p className="w-12">{item.acctCode}</p>
+                      <p>—</p>
+                      <p>{item.acctName}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
