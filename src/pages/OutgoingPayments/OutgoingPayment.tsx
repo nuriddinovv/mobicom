@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import useFetch from "../../api/useFetch";
-import { PaymentsApi } from "../../api/get";
+import { OutgoingPaymentsApi } from "../../api/get";
 import type { Payment } from "../../interfaces";
 import { formatDate } from "../../utils/formatDate";
 import "react-responsive-pagination/themes/classic.css";
@@ -30,7 +30,7 @@ export default function OutgoingPayment() {
   }, [typing, q]);
 
   const { loading, error, data, refetch } = useFetch(
-    () => PaymentsApi({ Query: q, Page: page }),
+    () => OutgoingPaymentsApi({ Query: q, Page: page }),
     false
   );
   useEffect(() => {

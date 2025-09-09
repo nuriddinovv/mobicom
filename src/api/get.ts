@@ -11,14 +11,16 @@ const API = "http://212.83.191.99:5000";
 export async function BusinessPartnersApi({
   sessionId,
   Query,
+  Page,
 }: {
   sessionId: string;
   Query: string | null;
+  Page: number;
 }) {
   const url =
     Query !== null
-      ? `${API}/BusinessPartners?q=${Query}`
-      : `${API}/BusinessPartners`;
+      ? `${API}/BusinessPartners?q=${Query}&page=${Page}`
+      : `${API}/BusinessPartners&page=${Page}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -28,7 +30,7 @@ export async function BusinessPartnersApi({
       Cookie: sessionId,
     },
   });
-  const result: businessPartnersResponse[] = await response.json();
+  const result: businessPartnersResponse = await response.json();
 
   return result;
 }

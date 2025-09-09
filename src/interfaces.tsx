@@ -15,6 +15,19 @@ export interface loginResponse {
   };
 }
 export interface businessPartnersResponse {
+  status: string;
+  data: {
+    pageSize: number;
+    totalPages: number;
+    currentPage: number;
+    businessPartners: businesParters[];
+  };
+  error: null | {
+    code: string;
+    message: string;
+  };
+}
+export interface businesParters {
   cardCode: string;
   cardName: string;
   groupCode: number;

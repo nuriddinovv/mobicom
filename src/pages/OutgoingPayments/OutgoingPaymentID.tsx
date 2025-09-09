@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import PartyType from "../../components/RadioGroup";
-import { NavLink, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import useFetch from "../../api/useFetch";
 import CustomLoader from "../../components/CustomLoader";
 import { formatDate } from "../../utils/formatDate";
 import { OutgoingPaymentApi } from "../../api/get";
 import toast from "react-hot-toast";
+import { SyncLoader } from "react-spinners";
 
 export default function OutgoingPaymentID() {
   const { id } = useParams();
@@ -20,8 +21,8 @@ export default function OutgoingPaymentID() {
   useEffect(() => {
     if (id !== undefined) refetch();
   }, [id]);
-
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const [type, setType] = useState<"CUSTOMER" | "SUPPLIER">("CUSTOMER");
 
   // ---- Cancel API helper
@@ -32,8 +33,6 @@ export default function OutgoingPaymentID() {
     id: number | string;
     sessionId: string | null;
   }) => {
-    console.log(id);
-
     const res = await fetch(`/api/OutPayments/${id}/Cancel`, {
       method: "POST",
       headers: {
@@ -61,7 +60,9 @@ export default function OutgoingPaymentID() {
 
   // ---- Cancel button handler
   const CancelPayment = async () => {
+    setModalLoading(true);
     const docEntry = data?.data?.docEntry;
+
     if (docEntry == null) {
       toast.error("docEntry topilmadi");
       return;
@@ -69,35 +70,36 @@ export default function OutgoingPaymentID() {
     try {
       await postPaymentCancel({ id: docEntry, sessionId });
       toast.success("Success");
-      navigate("/outgoing-payments");
+      navigate(-1);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Произошла ошибка");
     } finally {
+      setModalLoading(false);
       setModalVisible(false);
     }
   };
 
-  if (loading) return <CustomLoader />;
+  if (loading) {
+    return <CustomLoader />;
+  }
 
   return (
     <div className="p-4">
       {error && <p className="text-red-500">Error: {error.message}</p>}
-
       <div className="">
         <div className="grid grid-cols-4">
           <div className="col-span-3 h-[95vh] border border-r-0 rounded-l-md">
             <p className="bg-slate-200 py-1 text-xl text-center rounded-tl-md">
               Исходящий платежи
             </p>
-
             <div className="grid grid-cols-8 p-1 gap-2 ">
               <div className="flex flex-col col-span-3 gap-1">
                 <div className="flex items-center gap-1 w-full">
                   <p className="text-sm w-full">Код</p>
                   <input
                     type="text"
-                    defaultValue={data?.data?.cardCode}
+                    defaultValue={data?.data.cardCode}
                     className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                   />
                 </div>
@@ -105,22 +107,20 @@ export default function OutgoingPaymentID() {
                   <p className="text-sm w-full">Название</p>
                   <input
                     type="text"
-                    defaultValue={data?.data?.cardName}
+                    defaultValue={data?.data.cardName}
                     className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                   />
                 </div>
               </div>
-
               <div className="col-span-2 mx-auto ">
                 <PartyType value={type} onChange={setType} />
               </div>
-
               <div className="flex flex-col col-span-3 gap-1">
                 <div className="flex items-center gap-6 w-full">
                   <p className="text-sm w-full">#</p>
                   <input
                     type="text"
-                    defaultValue={data?.data?.docNum}
+                    defaultValue={data?.data.docNum}
                     className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                   />
                 </div>
@@ -128,13 +128,14 @@ export default function OutgoingPaymentID() {
                   <p className="text-sm w-full">Дата регистрации</p>
                   <input
                     type="text"
-                    defaultValue={formatDate(String(data?.data?.docDate ?? ""))}
+                    defaultValue={formatDate(
+                      (data?.data.docDate ?? "").toString()
+                    )}
                     className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                   />
                 </div>
               </div>
             </div>
-
             <div className="p-1">
               <div className="overflow-x-auto overflow-y-auto rounded-md w-full h-[50vh] border border-gray-200">
                 <table className="text-sm text-left w-full">
@@ -168,43 +169,44 @@ export default function OutgoingPaymentID() {
                   </thead>
 
                   <tbody>
-                    {data?.data?.paymentInvoices?.map(
-                      (item: any, i: number) => (
-                        <tr
-                          key={item?.invoiceDocEntry ?? i}
-                          className="bg-white border-b border-gray-200"
-                        >
-                          <th className="text-center">
-                            <input type="checkbox" className="cursor-pointer" />
+                    {data?.data.paymentInvoices.map((item, i) => {
+                      return (
+                        <tr className="bg-white border-b border-gray-200">
+                          <th className="">
+                            <input
+                              className="mx-auto w-full text-8xl bg-amber-400 p-5"
+                              type="checkbox"
+                              name=""
+                              id=""
+                            />
                           </th>
                           <td className="px-1 border-x-1 text-center border-gray-200 ">
-                            {item?.invoiceDocNum}
+                            {item.invoiceDocNum}
                           </td>
                           <td className="px-1 border-x-1 text-center border-gray-200 ">
-                            {item?.objectCode}
+                            {item.objectCode}
                           </td>
                           <td className="px-1 border-x-1 border-gray-200 text-right">
-                            {formatDate(item?.invoiceDate)}
+                            {formatDate(item.invoiceDate)}
                           </td>
                           <td className="px-1 border-x-1 border-gray-200 text-center">
-                            {item?.invoiceTotal}
+                            {item.invoiceTotal}
                           </td>
                           <td className="px-1 border-x-1 border-gray-200 text-center">
-                            {item?.openSum}
+                            {item.openSum}
                           </td>
                           <td className="px-1 border-x-1 border-gray-200 text-center">
-                            {item?.appliedSum}
+                            {item.appliedSum}
                           </td>
                           <td className="px-1 border-x-1 border-gray-200 text-right">
-                            {item?.currency}
+                            {item.currency}
                           </td>
                         </tr>
-                      )
-                    )}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-
               <div className="grid grid-cols-2 py-2">
                 <div className=""></div>
                 <div className="flex flex-col col-span-1 gap-1">
@@ -212,7 +214,7 @@ export default function OutgoingPaymentID() {
                     <p className="text-sm w-full">Сумма к оплате (ИВ)</p>
                     <input
                       type="text"
-                      defaultValue={data?.data?.docTotalFC}
+                      defaultValue={data?.data.docTotalFC}
                       className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                     />
                   </div>
@@ -220,19 +222,20 @@ export default function OutgoingPaymentID() {
                     <p className="text-sm w-full">Сумма к оплате (HВ)</p>
                     <input
                       type="text"
-                      defaultValue={data?.data?.docTotal}
+                      defaultValue={data?.data.docTotal}
                       className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                     />
                   </div>
                 </div>
               </div>
-
               <div className="flex gap-4 items-center w-full justify-end">
-                <NavLink to="/outgoing-payments">
-                  <button className="border py-1 px-2 rounded-md cursor-pointer">
-                    OK
-                  </button>
-                </NavLink>
+                <button
+                  onClick={() => navigate(-1)}
+                  className="border py-1 px-2 rounded-md cursor-pointer"
+                >
+                  OK
+                </button>
+
                 <button
                   onClick={() => setModalVisible(true)}
                   className="border py-1 px-2 rounded-md cursor-pointer"
@@ -242,7 +245,6 @@ export default function OutgoingPaymentID() {
               </div>
             </div>
           </div>
-
           <div className="col-span-1 h-[95vh] border rounded-r-md">
             <p className="bg-slate-200 py-1 text-xl text-center rounded-tr-md">
               Методы платежа
@@ -252,7 +254,7 @@ export default function OutgoingPaymentID() {
                 <div className="flex items-center gap-1 w-full">
                   <p className="text-sm w-full">Валюта</p>
                   <select
-                    defaultValue={data?.data?.docCurrency}
+                    defaultValue={data?.data.docCurrency}
                     className="border w-full text-center rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                   >
                     <option value="USD">USD</option>
@@ -263,7 +265,7 @@ export default function OutgoingPaymentID() {
                   <p className="text-sm w-full">Курс</p>
                   <input
                     type="text"
-                    defaultValue={`${data?.data?.docRate} UZS`}
+                    defaultValue={`${data?.data.docRate} UZS`}
                     className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 text-end"
                   />
                 </div>
@@ -273,29 +275,32 @@ export default function OutgoingPaymentID() {
                 <input
                   type="text"
                   defaultValue={"12350"}
-                  className="border w-16 text-center rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                  className="border w-16  text-center rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                 />
                 <p className="text-sm w-full">Schet nomi</p>
-                <p>{data?.data?.account}</p>
+                <p>{data?.data.account}</p>
               </div>
               <div className="flex items-center my-2 gap-1 w-full">
                 <p className="text-sm w-1/3">Статья ДДС</p>
-                <select className="border w-full text-center rounded-md text-sm outline-none px-1 py-0.5 border-gray-300">
+                <select
+                  name=""
+                  id=""
+                  className="border w-full text-center rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                >
                   <option value="1">option 1</option>
                   <option value="2">option 2</option>
                   <option value="3">option 3</option>
                 </select>
               </div>
-              <div className="flex items-center my-2 gap-1 w-full">
+              <div className="flex  items-center my-2 gap-1 w-full">
                 <p className="text-sm w-full">
-                  Магазин: {data?.data?.shopCode} - {data?.data?.shopName}
+                  Магазин: {data?.data.shopCode} -{data?.data.shopName}
                 </p>
               </div>
             </div>
           </div>
         </div>
       </div>
-
       {/* Confirm modal */}
       <div className="relative flex justify-center items-center">
         <div
@@ -315,14 +320,19 @@ export default function OutgoingPaymentID() {
               </div>
               <div className="my-4 w-full gap-4 flex items-center justify-center">
                 <button
+                  disabled={modalLoading}
                   onClick={CancelPayment}
-                  className="p-1 bg-green-500 text-white rounded-md px-4 w-full"
+                  className="p-1 bg-green-500 text-white rounded-md px-4 w-full cursor-pointer"
                 >
-                  Да
+                  {modalLoading ? (
+                    <SyncLoader size={8} color="#fff" speedMultiplier={0.7} />
+                  ) : (
+                    "Да"
+                  )}
                 </button>
                 <button
                   onClick={() => setModalVisible(false)}
-                  className="p-1 bg-red-500 text-white rounded-md px-4 w-full"
+                  className="p-1 bg-red-500 text-white rounded-md px-4 w-full cursor-pointer"
                 >
                   Нет
                 </button>

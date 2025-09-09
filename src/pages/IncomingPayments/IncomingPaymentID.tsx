@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import PartyType from "../../components/RadioGroup";
-import { NavLink, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import useFetch from "../../api/useFetch";
 import CustomLoader from "../../components/CustomLoader";
 import { formatDate } from "../../utils/formatDate";
 import { PaymentApi } from "../../api/get";
 import toast from "react-hot-toast";
+import { SyncLoader } from "react-spinners";
 
 export default function IncomingPaymentID() {
   const { id } = useParams();
@@ -20,8 +21,8 @@ export default function IncomingPaymentID() {
   useEffect(() => {
     if (id !== undefined) refetch();
   }, [id]);
-
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
   const [type, setType] = useState<"CUSTOMER" | "SUPPLIER">("CUSTOMER");
 
   // ---- Cancel API helper
@@ -33,6 +34,7 @@ export default function IncomingPaymentID() {
     sessionId: string | null;
   }) => {
     console.log(id);
+    console.log(sessionId);
 
     const res = await fetch(`/api/InPayments/${id}/Cancel`, {
       method: "POST",
@@ -61,8 +63,8 @@ export default function IncomingPaymentID() {
 
   // ---- Cancel button handler
   const CancelPayment = async () => {
+    setModalLoading(true);
     const docEntry = data?.data?.docEntry;
-    console.log(docEntry);
 
     if (docEntry == null) {
       toast.error("docEntry topilmadi");
@@ -71,11 +73,12 @@ export default function IncomingPaymentID() {
     try {
       await postPaymentCancel({ id: docEntry, sessionId });
       toast.success("Success");
-      navigate("/outgoing-payments");
+      navigate(-1);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Произошла ошибка");
     } finally {
+      setModalLoading(false);
       setModalVisible(false);
     }
   };
@@ -229,11 +232,13 @@ export default function IncomingPaymentID() {
                 </div>
               </div>
               <div className="flex gap-4 items-center w-full justify-end">
-                <NavLink to="/incoming-payments">
-                  <button className="border py-1 px-2 rounded-md cursor-pointer">
-                    OK
-                  </button>
-                </NavLink>
+                <button
+                  onClick={() => navigate(-1)}
+                  className="border py-1 px-2 rounded-md cursor-pointer"
+                >
+                  OK
+                </button>
+
                 <button
                   onClick={() => setModalVisible(true)}
                   className="border py-1 px-2 rounded-md cursor-pointer"
@@ -318,14 +323,19 @@ export default function IncomingPaymentID() {
               </div>
               <div className="my-4 w-full gap-4 flex items-center justify-center">
                 <button
+                  disabled={modalLoading}
                   onClick={CancelPayment}
-                  className="p-1 bg-green-500 text-white rounded-md px-4 w-full"
+                  className="p-1 bg-green-500 text-white rounded-md px-4 w-full cursor-pointer"
                 >
-                  Да
+                  {modalLoading ? (
+                    <SyncLoader size={8} color="#fff" speedMultiplier={0.7} />
+                  ) : (
+                    "Да"
+                  )}
                 </button>
                 <button
                   onClick={() => setModalVisible(false)}
-                  className="p-1 bg-red-500 text-white rounded-md px-4 w-full"
+                  className="p-1 bg-red-500 text-white rounded-md px-4 w-full cursor-pointer"
                 >
                   Нет
                 </button>

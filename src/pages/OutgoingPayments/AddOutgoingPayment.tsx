@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import PartyType from "../../components/RadioGroup";
+import { useEffect, useMemo, useRef, useState, startTransition } from "react";
 import useFetch from "../../api/useFetch";
 import CustomLoader from "../../components/CustomLoader";
 import { formatDate } from "../../utils/formatDate";
@@ -7,26 +6,24 @@ import {
   BusinessPartnersApi,
   ChartOfAccountsApi,
   OutgoingPaymentOpenApi,
+  PaymentOpenApi,
 } from "../../api/get";
 import type {
-  businessPartnersResponse,
+  businesParters,
   chartOfAccountsResponse,
   PaymentInvoices,
 } from "../../interfaces";
 import toast from "react-hot-toast";
+import { RotateLoader } from "react-spinners";
+import { useNavigate } from "react-router-dom";
 
-// ===================== Helpers (guruhlangan) =====================
+// ------------------ Helpers ------------------
 const todayStr = () => {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
-};
-
-const parseExRate = (s: string | null): number => {
-  const n = Number(String(s ?? "0").replace(/[^\d.-]/g, ""));
-  return Number.isFinite(n) && n > 0 ? n : 1;
 };
 
 const clamp = (n: number, min: number, max: number) =>
@@ -50,21 +47,27 @@ const calcTotals = (invoices: PaymentInvoices[], exRate: number) => {
 };
 
 const buildPayload = (args: {
-  base: businessPartnersResponse | null;
+  base: businesParters | null;
   invoices: PaymentInvoices[];
   totals: { totalUSD: number; totalUZS: number };
   date: string;
   currency: "USD" | "UZS" | string;
   acctCode: string;
-  type: "CUSTOMER" | "SUPPLIER";
   exRate: number;
 }) => {
   const { base, invoices, totals, date, currency, acctCode, exRate } = args;
-  const selected = invoices.filter((x) => x.isChecked);
+  const selected = invoices
+    .filter((x) => x.isChecked)
+    .map((it) => {
+      const { isChecked, ...rest } = it; // isChecked'ni jo'natmaymiz
+      return {
+        ...rest,
+        appliedSum: Number(it.appliedSum) || 0,
+        docLine: 1 as const,
+      };
+    });
 
-  if (!base) {
-    throw new Error("Partner data is required");
-  }
+  if (!base) throw new Error("Partner data is required");
 
   return {
     docType: "C",
@@ -81,14 +84,11 @@ const buildPayload = (args: {
     docTotalFC: Math.round(totals.totalUZS),
     docCurrency: currency,
     docRate: exRate,
-    paymentInvoices: selected.map((it) => ({
-      ...it,
-      appliedSum: Number(it.appliedSum) || 0,
-    })),
+    paymentInvoices: selected,
   };
 };
 
-const postOutPayment = async (payload: any, sessionId: string | null) => {
+const postInPayment = async (payload: any, sessionId: string | null) => {
   const res = await fetch("/api/OutPayments", {
     method: "POST",
     headers: {
@@ -103,54 +103,52 @@ const postOutPayment = async (payload: any, sessionId: string | null) => {
   let json: any = null;
   try {
     json = text ? JSON.parse(text) : null;
-  } catch {
-    // server text qaytargan bo'lishi mumkin
-  }
+  } catch {}
   if (!res.ok) {
     const msg =
-      (json && (json.error?.message || json.message)) ||
-      text ||
-      `HTTP ${res.status}`;
+      json?.error?.message || json?.message || text || `HTTP ${res.status}`;
     throw new Error(msg);
   }
   return json ?? { ok: true };
 };
-// =================== /Helpers ===================
+// ---------------- /Helpers --------------------
 
-export default function AddIncomingPayment() {
+export default function AddOutgoingPayment() {
   // ------- Local storages -------
   const sessionId = sessionStorage.getItem("sessionId");
   const CurrentExchangeRate = localStorage.getItem("CurrentExchangeRate");
-  const exRate = useMemo(
-    () => parseExRate(CurrentExchangeRate),
-    [CurrentExchangeRate]
-  );
+  const navigate = useNavigate();
+  // Kursni son qilib oling (masalan "13 000 UZS" bo‘lsa ham)
+  const exRate = useMemo(() => {
+    const n = Number(
+      String(CurrentExchangeRate ?? "0").replace(/[^\d.-]/g, "")
+    );
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  }, [CurrentExchangeRate]);
 
   // ------- UI state -------
   const [paymentInvoices, setPaymentInvoices] = useState<PaymentInvoices[]>([]);
-  const [partnerData, setPartnerData] =
-    useState<businessPartnersResponse | null>(null);
+  const [partnerData, setPartnerData] = useState<businesParters | null>(null);
   const [currency, setCurrency] = useState<string>("UZS");
   const [date, setDate] = useState<string>(todayStr());
-  const [type, setType] = useState<"CUSTOMER" | "SUPPLIER">("CUSTOMER");
   const [acctCode, setAcctCode] = useState<string>("");
   const [acctName, setAcctName] = useState<string>("");
+
+  // Draft qiymatlar (input ichidagi matnni tez saqlash uchun)
+  const [draftValues, setDraftValues] = useState<Record<number, string>>({});
 
   const [modalVisible, setModalVisible] = useState(false);
   const [chartOfAccountsModalVisible, setChartModalVisible] = useState(false);
 
-  // Search/pagination (Payments modal)
+  // Search/pagination (modallarda)
   const [q, setQ] = useState("");
   const [typing, setTyping] = useState(false);
   const [page, setPage] = useState(1);
   const listRef = useRef<HTMLDivElement>(null);
-
-  // Partner select (CardCode)
-  const [selectedCardCode, setSelectedCardCode] = useState<string | null>(null);
-
+  const [totalPages, setTotalPages] = useState(1);
   // ------- API calls -------
   const { loading, error, data, refetch } = useFetch(
-    () => OutgoingPaymentOpenApi({ CardCode: selectedCardCode ?? "" }),
+    () => OutgoingPaymentOpenApi({ CardCode: partnerData?.cardCode || "" }),
     false
   );
 
@@ -173,31 +171,41 @@ export default function AddIncomingPayment() {
   const {
     error: PartnersError,
     data: PartnersData,
+    loading: PartnersLoading,
     refetch: partnersRefetch,
   } = useFetch(() =>
-    BusinessPartnersApi({ Query: q, sessionId: sessionId || "123" })
+    BusinessPartnersApi({
+      Query: q,
+      sessionId: sessionId || "123",
+      Page: page,
+    })
   );
 
-  // CardCode o'zgarsa: open invoices ni olamiz
   useEffect(() => {
-    if (selectedCardCode) refetch();
-  }, [selectedCardCode]);
+    setTotalPages(PartnersData?.data.totalPages || 10);
+  }, [data]);
 
-  // Open invoices kelganda Payment ichiga normalizatsiya qilib qo'yamiz
+  // Partner tanlansa — ochiq invoice’larni olamiz
+  useEffect(() => {
+    if (partnerData?.cardCode) refetch();
+  }, [partnerData]);
+
+  // Invoicelar keldi
   useEffect(() => {
     if (data?.data) {
       setPaymentInvoices(data.data);
+      setDraftValues({});
     }
   }, [data]);
 
-  // Type-to-search debounce
+  // Type-to-search debounce (faqat q inputi uchun)
   useEffect(() => {
     if (!typing) return;
     const t = setTimeout(() => setTyping(false), 700);
     return () => clearTimeout(t);
   }, [typing]);
 
-  // Q o'zgarsa refetch
+  // q o‘zgarsa refetch
   useEffect(() => {
     if (!typing && q !== "") {
       setPage(1);
@@ -206,7 +214,7 @@ export default function AddIncomingPayment() {
     }
   }, [typing, q]);
 
-  // Bo'sh q bo'lsa barchasini qayta olamiz
+  // q bo‘sh bo‘lsa ham ro‘yxatni yangilab turamiz
   useEffect(() => {
     if (q === "") {
       partnersRefetch();
@@ -217,10 +225,11 @@ export default function AddIncomingPayment() {
   // Paging scroll top
   useEffect(() => {
     partnersRefetch();
+
     listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [page]);
 
-  // Totals (faqat isChecked)
+  // Totals (faqat isChecked) — tez ishlashi uchun exRate ni son sifatida uzatdik
   const { totalUSD, totalUZS } = useMemo(() => {
     return calcTotals(paymentInvoices, exRate);
   }, [paymentInvoices, exRate]);
@@ -244,19 +253,20 @@ export default function AddIncomingPayment() {
         date,
         currency,
         acctCode,
-        type,
         exRate,
       });
 
       setPostLoading(true);
-      const json = await postOutPayment(payload, sessionId);
+      const json = await postInPayment(payload, sessionId);
       toast.success("Success");
-      // reset minimal
+      // reset
       setPaymentInvoices([]);
       setPartnerData(null);
-      setSelectedCardCode(null);
+      setAcctCode("");
+      setAcctName("");
       setQ("");
       setPage(1);
+      setDraftValues({});
       console.log("Server:", json);
     } catch (e: any) {
       console.error(e);
@@ -266,7 +276,7 @@ export default function AddIncomingPayment() {
     }
   };
 
-  // ------- Error toasts (1 marta per change) -------
+  // ------- Error toasts -------
   useEffect(() => {
     if (error) toast.error(data?.error?.message || "Произошла ошибка");
   }, [error, data]);
@@ -276,6 +286,46 @@ export default function AddIncomingPayment() {
   useEffect(() => {
     if (ChartError) toast.error("Счетлар ro'yxatini olishda xatolik");
   }, [ChartError]);
+
+  // ------- Handlers (tezlik uchun optimallashtirilgan) -------
+  const handleCheck = (idx: number, checked: boolean) => {
+    startTransition(() => {
+      setPaymentInvoices((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], isChecked: checked };
+        return next;
+      });
+    });
+  };
+
+  // Input ichida yozish — faqat draft stringni yangilaymiz (hech narsa clamp qilmaymiz)
+  const handleDraftChange = (id: number, raw: string) => {
+    setDraftValues((prev) => ({ ...prev, [id]: raw }));
+  };
+
+  // Blur/Enter — son qilib clamp + state’ga qo‘llaymiz (startTransition bilan)
+  const commitDraft = (
+    idx: number,
+    id: number,
+    minVal: number,
+    maxVal: number
+  ) => {
+    const raw = draftValues[id];
+    const n = raw === "" || raw == null ? 0 : Number(raw.replace(",", "."));
+    const clamped = Number.isFinite(n) ? clamp(n, minVal, maxVal) : 0;
+
+    startTransition(() => {
+      setPaymentInvoices((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], appliedSum: clamped };
+        return next;
+      });
+      setDraftValues((prev) => {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
+    });
+  };
 
   return (
     <div className="p-4">
@@ -311,15 +361,17 @@ export default function AddIncomingPayment() {
               </div>
             </div>
 
+            {/* Agar kerak bo‘lsa qayta yoqing
             <div className="col-span-2 mx-auto">
               <PartyType value={type} onChange={setType} />
-            </div>
+            </div> */}
 
             <div className="flex flex-col col-span-3 gap-1">
               <div className="flex items-center gap-6 w-full">
                 <p className="text-sm w-full">#</p>
                 <input
                   type="text"
+                  readOnly
                   className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
                 />
               </div>
@@ -370,8 +422,12 @@ export default function AddIncomingPayment() {
                 <tbody>
                   {paymentInvoices?.map((item, idx) => {
                     const absOpen = Math.abs(Number(item.openSum) || 0);
-                    const minVal = -absOpen;
-                    const maxVal = absOpen;
+                    const minVal = -absOpen; // manfiy ruxsat
+                    const maxVal = -absOpen;
+                    const idKey = item.invoiceDocEntry; // draft map uchun kalit
+                    const shownValue =
+                      draftValues[idKey] ?? (item.appliedSum ?? "").toString();
+
                     return (
                       <tr
                         key={item.invoiceDocEntry}
@@ -382,17 +438,7 @@ export default function AddIncomingPayment() {
                             type="checkbox"
                             className="cursor-pointer"
                             checked={!!item.isChecked}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setPaymentInvoices((prev) => {
-                                const next = [...prev];
-                                next[idx] = {
-                                  ...next[idx],
-                                  isChecked: checked,
-                                };
-                                return next;
-                              });
-                            }}
+                            onChange={(e) => handleCheck(idx, e.target.checked)}
                           />
                         </th>
                         <td className="px-1 border-x text-center border-gray-200">
@@ -412,29 +458,25 @@ export default function AddIncomingPayment() {
                         </td>
                         <td className="px-1 border-x text-right">
                           <input
-                            type="text"
+                            type="number"
+                            inputMode="decimal"
                             step="0.01"
                             className="outline-none text-right w-24"
                             min={minVal}
                             max={maxVal}
+                            value={shownValue}
                             onChange={(e) => {
-                              const raw = e.target.value;
-                              const n = raw === "" ? 0 : Number(raw);
-                              if (!Number.isFinite(n)) return;
-                              const clampedVal = clamp(n, minVal, maxVal);
-                              setPaymentInvoices((prev) => {
-                                const next = [...prev];
-                                next[idx] = {
-                                  ...next[idx],
-                                  appliedSum: clampedVal,
-                                };
-                                return next;
-                              });
+                              // faqat draftni yangilaymiz -> lag yo‘q
+                              handleDraftChange(idKey, e.target.value);
                             }}
-                            onBlur={(e) => {
-                              const n = Number(e.target.value || 0);
-                              const c = clamp(n, minVal, maxVal);
-                              if (n !== c) e.target.value = String(c);
+                            onBlur={() => {
+                              // blurda clamp qilib massivga yozamiz
+                              commitDraft(idx, idKey, minVal, maxVal);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                (e.target as HTMLInputElement).blur();
+                              }
                             }}
                           />
                         </td>
@@ -479,7 +521,10 @@ export default function AddIncomingPayment() {
               >
                 OK
               </button>
-              <button className="border py-1 px-2 rounded-md cursor-pointer">
+              <button
+                onClick={() => navigate(-1)}
+                className="border py-1 px-2 rounded-md cursor-pointer"
+              >
                 Отменить
               </button>
             </div>
@@ -562,30 +607,73 @@ export default function AddIncomingPayment() {
                   placeholder="Поиск..."
                   className="w-full border rounded-md border-gray-300 px-2 py-2 outline-none"
                 />
-                <div
-                  ref={listRef}
-                  style={{
-                    scrollbarColor: "transparent",
-                    scrollbarWidth: "none",
-                  }}
-                  className="overflow-y-scroll h-[75vh] divide-y-0"
-                >
-                  {PartnersData?.map((item: businessPartnersResponse) => (
-                    <div
+                {!PartnersLoading ? (
+                  <div
+                    ref={listRef}
+                    style={{
+                      scrollbarColor: "transparent",
+                      scrollbarWidth: "none",
+                    }}
+                    className="overflow-y-scroll h-[75vh] divide-y-0"
+                  >
+                    {PartnersData?.data.businessPartners.map(
+                      (item: businesParters) => (
+                        <div
+                          onClick={() => {
+                            setPartnerData(item);
+                            setModalVisible(false);
+                          }}
+                          key={item.cardCode}
+                          className="m-2 gap-4 border-b border-gray-300 cursor-pointer flex items-center"
+                        >
+                          <p>{item.cardCode}</p>
+                          <p>-</p>
+                          <p>{item.cardName}</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    style={{ display: PartnersLoading ? "flex" : "none" }}
+                    className="relative h-[75vh] flex justify-center items-center"
+                  >
+                    <RotateLoader color="black" speedMultiplier={0.8} />
+                  </div>
+                )}
+                {PartnersData && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      aria-label="Previous page"
+                      className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
                       onClick={() => {
-                        setPartnerData(item);
-                        setSelectedCardCode(item.cardCode);
-                        setModalVisible(false);
+                        setPage((p) => Math.max(1, p - 1));
                       }}
-                      key={item.cardCode}
-                      className="m-2 gap-4 border-b border-gray-300 cursor-pointer flex items-center"
+                      disabled={page === 1}
                     >
-                      <p>{item.cardCode}</p>
-                      <p>-</p>
-                      <p>{item.cardName}</p>
+                      ‹
+                    </button>
+
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-md tabular-nums">
+                      <span>{page}</span>
+                      <span>/</span>
+                      <span>{totalPages}</span>
                     </div>
-                  ))}
-                </div>
+
+                    <button
+                      type="button"
+                      aria-label="Next page"
+                      className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
+                      onClick={() => {
+                        setPage((p) => Math.min(totalPages, p + 1));
+                      }}
+                      disabled={page === totalPages}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
