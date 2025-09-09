@@ -33,21 +33,32 @@ export default function AccountingTransaction() {
       <table className="text-sm text-left w-full">
         <thead className="sticky top-0 z-10 bg-gray-100 uppercase">
           <tr>
-            <th className="py-2 text-center px-2 whitespace-nowrap">No</th>
-            <th className="py-2 text-center px-4 whitespace-nowrap">
-              Счет ГК/код БП
+            <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
+              No
             </th>
-            <th className="py-2 text-center px-2 whitespace-nowrap">
+            <th className="py-2 border-x border-slate-300 whitespace-nowrap flex items-center">
+              <button className="cursor-pointer w-full border-r px-2">
+                Счет ГК
+              </button>
+              <button className="cursor-pointer w-full  border-l px-2">
+                Счет ГК
+              </button>
+            </th>
+            <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
               Наименование счета ГК/БП
             </th>
-            <th className="py-2 text-center px-2 whitespace-nowrap">
+            <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
               Дебет (ИВ)
             </th>
-            <th className="py-2 text-center px-2 whitespace-nowrap">
+            <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
               Кредит (ИВ)
             </th>
-            <th className="py-2 text-center px-6 whitespace-nowrap ">Дебет</th>
-            <th className="py-2 text-center px-4 ">Кредит</th>
+            <th className="py-2 border-x border-slate-300 text-center px-6 whitespace-nowrap ">
+              Дебет
+            </th>
+            <th className="py-2 border-x border-slate-300 text-center px-4 ">
+              Кредит
+            </th>
           </tr>
         </thead>
 
