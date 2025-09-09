@@ -1,6 +1,85 @@
+import { useEffect, useRef, useState } from "react";
+import useFetch from "../api/useFetch";
+import { BusinessPartnersApi, ChartOfAccountsApi } from "../api/get";
+import { useNavigate } from "react-router-dom";
+import type { businesParters } from "../interfaces";
+import { RotateLoader } from "react-spinners";
+
 export default function AccountingTransaction() {
+  const sessionId = sessionStorage.getItem("sessionId");
+  const CurrentExchangeRate = localStorage.getItem("CurrentExchangeRate");
+  const navigate = useNavigate();
+
+  const [partnersModalVisible, setPartnersModalVisible] =
+    useState<boolean>(false);
+  // Search/pagination (modallarda)
+  const [q, setQ] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [page, setPage] = useState(1);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const {
+    error: ChartError,
+    data: ChartData,
+    refetch: chartRefetch,
+  } = useFetch(() =>
+    ChartOfAccountsApi({
+      Query: q,
+      sessionId: sessionId || "123",
+      Curr: null,
+    })
+  );
+
+  useEffect(() => {
+    chartRefetch();
+  }, []);
+
+  const {
+    error: PartnersError,
+    data: PartnersData,
+    loading: PartnersLoading,
+    refetch: partnersRefetch,
+  } = useFetch(() =>
+    BusinessPartnersApi({
+      Query: q,
+      sessionId: sessionId || "123",
+      Page: page,
+    })
+  );
+
+  // Type-to-search debounce (faqat q inputi uchun)
+  useEffect(() => {
+    if (!typing) return;
+    const t = setTimeout(() => setTyping(false), 700);
+    return () => clearTimeout(t);
+  }, [typing]);
+
+  // q o‘zgarsa refetch
+  useEffect(() => {
+    if (!typing && q !== "") {
+      setPage(1);
+      partnersRefetch();
+      chartRefetch();
+    }
+  }, [typing, q]);
+
+  // q bo‘sh bo‘lsa ham ro‘yxatni yangilab turamiz
+  useEffect(() => {
+    if (q === "") {
+      partnersRefetch();
+      chartRefetch();
+    }
+  }, [q]);
+
+  // Paging scroll top
+  useEffect(() => {
+    partnersRefetch();
+
+    listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page]);
   return (
-    <div className="p-4">
+    <div className="p-4 ">
       <h1 className="text-3xl font-bold mb-4 pt-4 text-center">
         Бухгалтерская операция
       </h1>
@@ -116,6 +195,108 @@ export default function AccountingTransaction() {
           </tr>
         </tbody>
       </table>
+
+      {/* MODALS */}
+      <div className="relative flex justify-center items-center">
+        <div
+          style={{
+            display: partnersModalVisible ? "block" : "none",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 50,
+          }}
+          className="w-full h-full top-0 fixed sticky-0"
+        >
+          <div className="2xl:container w-[100vw] h-[100vh] mx-auto flex justify-center items-center">
+            <div className="relative bg-white p-4 w-[560px]">
+              <div className="w-full justify-end flex mb-4">
+                <button
+                  onClick={() => setPartnersModalVisible(false)}
+                  aria-label="close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="w-full">
+                <input
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setTyping(true);
+                  }}
+                  type="search"
+                  placeholder="Поиск..."
+                  className="w-full border rounded-md border-gray-300 px-2 py-2 outline-none"
+                />
+                {!PartnersLoading ? (
+                  <div
+                    ref={listRef}
+                    style={{
+                      scrollbarColor: "transparent",
+                      scrollbarWidth: "none",
+                    }}
+                    className="overflow-y-scroll h-[75vh] divide-y-0"
+                  >
+                    {PartnersData?.data.businessPartners.map(
+                      (item: businesParters) => (
+                        <div
+                          onClick={() => {
+                            setPartnersModalVisible(false);
+                          }}
+                          key={item.cardCode}
+                          className="m-2 gap-4 border-b border-gray-300 cursor-pointer flex items-center"
+                        >
+                          <p>{item.cardCode}</p>
+                          <p>-</p>
+                          <p>{item.cardName}</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    style={{ display: PartnersLoading ? "flex" : "none" }}
+                    className="relative h-[75vh] flex justify-center items-center"
+                  >
+                    <RotateLoader color="black" speedMultiplier={0.8} />
+                  </div>
+                )}
+                {PartnersData && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      aria-label="Previous page"
+                      className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
+                      onClick={() => {
+                        setPage((p) => Math.max(1, p - 1));
+                      }}
+                      disabled={page === 1}
+                    >
+                      ‹
+                    </button>
+
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-md tabular-nums">
+                      <span>{page}</span>
+                      <span>/</span>
+                      <span>{totalPages}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-label="Next page"
+                      className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
+                      onClick={() => {
+                        setPage((p) => Math.min(totalPages, p + 1));
+                      }}
+                      disabled={page === totalPages}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

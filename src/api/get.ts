@@ -142,8 +142,8 @@ export async function OutgoingPaymentsApi({
 }) {
   const url =
     Query !== null
-      ? `http://212.83.191.99:5000/InPayments?&q=${Query}&page=${Page}`
-      : `http://212.83.191.99:5000/InPayments?&page=${Page}`;
+      ? `http://212.83.191.99:5000/OutPayments?&q=${Query}&page=${Page}`
+      : `http://212.83.191.99:5000/OutPayments?&page=${Page}`;
 
   const response = await fetch(url, {
     method: "GET",
