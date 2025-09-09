@@ -273,15 +273,15 @@ export default function IncomingPaymentID() {
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-1 w-full py-2">
-                <p className="text-sm w-16">Счет</p>
-                <input
-                  type="text"
-                  defaultValue={"12350"}
-                  className="border w-16  text-center rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
-                />
-                <p className="text-sm w-full">Schet nomi</p>
-                <p>{data?.data.account}</p>
+              <div className="flex items-center gap-1 w-full">
+                <button className="flex items-center gap-1 w-full py-2">
+                  <p className="text-sm w-full text-left">Счет: </p>
+                  <div className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 text-end">
+                    <p className="text-sm w-full text-left">
+                      {data?.data.cardCode} - {data?.data.cardName}
+                    </p>
+                  </div>
+                </button>
               </div>
               <div className="flex items-center my-2 gap-1 w-full">
                 <p className="text-sm w-1/3">Статья ДДС</p>
