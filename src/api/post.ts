@@ -37,7 +37,10 @@ export async function PaymentOpenPostApi({ data, sessionId }) {
 
   return result;
 }
-export async function JournalEntryApi({ data, sessionId }) {
+export async function JournalEntryApi({ payload, sessionId }) {
+  console.log(payload);
+  console.log(sessionId);
+
   const response = await fetch(`http://212.83.191.99:5000/JournalEntries`, {
     method: "POST",
     headers: {
@@ -45,7 +48,7 @@ export async function JournalEntryApi({ data, sessionId }) {
       "Content-Type": "application/json",
       Cookie: sessionId,
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
   const result: accountingTransaction = await response.json();
 

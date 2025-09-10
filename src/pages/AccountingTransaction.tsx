@@ -53,10 +53,9 @@ export default function AccountingTransaction() {
         shopCode: selectedShop.shopCode,
         journalEntryLines: sanitizedLines,
       };
-      console.log("POST payload:", payload);
       setPostLoading(true);
       // 2) POST bevosita payload bilan
-      const json = await JournalEntryApi(payload, sessionId);
+      const json = await JournalEntryApi({ payload, sessionId });
 
       toast.success("Success");
       setAccountingTransaction({

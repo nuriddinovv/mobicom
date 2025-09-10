@@ -183,7 +183,7 @@ export async function OutgoingPaymentOpenApi({
   CardCode: string;
 }) {
   const response = await fetch(
-    `http://212.83.191.99:5000/InPayments/Open/${CardCode}`,
+    `http://212.83.191.99:5000/OutPayments/Open/${CardCode}`,
     {
       method: "GET",
       headers: {
