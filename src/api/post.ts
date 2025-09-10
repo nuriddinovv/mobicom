@@ -29,7 +29,7 @@ export async function PaymentOpenPostApi({ data, sessionId }) {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      Cookie: sessionId,
+      "X-Session-Id": sessionId ?? "",
     },
     body: JSON.stringify(data),
   });
@@ -38,15 +38,12 @@ export async function PaymentOpenPostApi({ data, sessionId }) {
   return result;
 }
 export async function JournalEntryApi({ payload, sessionId }) {
-  console.log(payload);
-  console.log(sessionId);
-
-  const response = await fetch(`http://212.83.191.99:5000/JournalEntries`, {
+  const response = await fetch(`/api/JournalEntries`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      Cookie: sessionId,
+      "X-Session-Id": sessionId ?? "",
     },
     body: JSON.stringify(payload),
   });

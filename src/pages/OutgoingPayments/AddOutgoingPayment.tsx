@@ -274,7 +274,6 @@ export default function AddOutgoingPayment() {
       setPage(1);
       setDraftValues({});
       setSelectedShop();
-      console.log("Server:", json);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Произошла ошибка");

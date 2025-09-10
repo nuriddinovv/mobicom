@@ -261,9 +261,6 @@ export default function AddIncomingPayment() {
         acctCode,
         exRate,
       });
-      
-      console.log(payload);
-
       setPostLoading(true);
       const json = await postInPayment(payload, sessionId);
       toast.success("Success");
@@ -276,7 +273,6 @@ export default function AddIncomingPayment() {
       setPage(1);
       setDraftValues({});
       setSelectedShop();
-      console.log("Server:", json);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Произошла ошибка");

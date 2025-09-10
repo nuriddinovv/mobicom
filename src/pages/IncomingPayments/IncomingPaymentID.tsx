@@ -33,9 +33,6 @@ export default function IncomingPaymentID() {
     id: number | string;
     sessionId: string | null;
   }) => {
-    console.log(id);
-    console.log(sessionId);
-
     const res = await fetch(`/api/InPayments/${id}/Cancel`, {
       method: "POST",
       headers: {

@@ -13,6 +13,14 @@ import { RotateLoader } from "react-spinners";
 import toast from "react-hot-toast";
 import { JournalEntryApi } from "../api/post";
 
+const todayStr = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export default function AccountingTransaction() {
   const sessionId = sessionStorage.getItem("sessionId");
   const CurrentExchangeRate = localStorage.getItem("CurrentExchangeRate");
@@ -32,8 +40,9 @@ export default function AccountingTransaction() {
   const [journalEntryLines, setJournalEntryLines] = useState<
     journalEntryLines[]
   >([]);
+  const [date, setdate] = useState(todayStr);
   const [selectedShop, setSelectedShop] = useState<shop>();
-  const [memo, setMemo] = useState("");
+  const [comment, setComment] = useState("");
   const [postLoading, setPostLoading] = useState(false);
   const handleSubmit = async () => {
     try {
@@ -48,27 +57,26 @@ export default function AccountingTransaction() {
       );
       const payload: accountingTransaction = {
         ...accountingTransaction,
-        memo,
-        referenceDate: accountingTransaction.referenceDate,
+        memo: comment,
+        referenceDate: date,
         shopCode: selectedShop.shopCode,
         journalEntryLines: sanitizedLines,
       };
       setPostLoading(true);
       // 2) POST bevosita payload bilan
       const json = await JournalEntryApi({ payload, sessionId });
-
-      toast.success("Success");
-      setAccountingTransaction({
-        memo: "",
-        referenceDate: "",
-        shopCode: "",
-        journalEntryLines: [],
-      });
-      setMemo("");
-      setJournalEntryLines([]);
-      setSelectedShop(undefined);
-
-      console.log("Server:", json);
+      if (json) {
+        toast.success("Success");
+        setAccountingTransaction({
+          memo: "",
+          referenceDate: "",
+          shopCode: "",
+          journalEntryLines: [],
+        });
+        setComment("");
+        setJournalEntryLines([]);
+        setSelectedShop(undefined);
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Произошла ошибка");
@@ -259,6 +267,12 @@ export default function AccountingTransaction() {
     ]);
   };
 
+  // Calculate totals
+  const [debitTotal, setDebitTotal] = useState(0);
+  const [fcDebitTotal, setFcDebitTotal] = useState(0);
+  const [creditTotal, setCreditTotal] = useState(0);
+  const [fcCreditTotal, setFcCreditTotal] = useState(0);
+
   return (
     <div className="p-4 ">
       <h1 className="text-3xl font-bold mb-4 pt-4 text-center">
@@ -268,11 +282,9 @@ export default function AccountingTransaction() {
       <div className="grid grid-cols-5 gap-4 my-4">
         <input
           type="date"
+          value={date}
           onChange={(e) => {
-            setAccountingTransaction((prev) => ({
-              ...prev,
-              referenceDate: e.target.value.toString(),
-            }));
+            setdate(e.target.value.toString());
           }}
           className="w-full border rounded-md p-1 text-sm outline-none"
           placeholder="Дата"
@@ -419,8 +431,25 @@ export default function AccountingTransaction() {
         </table>
       </div>
 
-      <div className="">
-        <button onClick={handleSubmit}>press</button>
+      <div className="grid grid-cols-8 gap-4 w-full">
+        <button className="border grid-cols-1" onClick={handleSubmit}>
+          press
+        </button>
+        <button className="border col-span-3" onClick={handleSubmit}>
+          press
+        </button>
+        <button className="border grid-cols-1" onClick={handleSubmit}>
+          press
+        </button>
+        <button className="border grid-cols-1" onClick={handleSubmit}>
+          press
+        </button>
+        <button className="border grid-cols-1" onClick={handleSubmit}>
+          press
+        </button>
+        <button className="border grid-cols-1" onClick={handleSubmit}>
+          press
+        </button>
       </div>
 
       {/* MODALS */}
