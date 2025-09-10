@@ -6,11 +6,13 @@ import {
   BusinessPartnersApi,
   ChartOfAccountsApi,
   PaymentOpenApi,
+  ShopsApi,
 } from "../../api/get";
 import type {
   businesParters,
   chartOfAccountsResponse,
   PaymentInvoices,
+  shop,
 } from "../../interfaces";
 import toast from "react-hot-toast";
 import { RotateLoader } from "react-spinners";
@@ -46,6 +48,7 @@ const calcTotals = (invoices: PaymentInvoices[], exRate: number) => {
 };
 
 const buildPayload = (args: {
+  shopCode: string;
   base: businesParters | null;
   invoices: PaymentInvoices[];
   totals: { totalUSD: number; totalUZS: number };
@@ -54,7 +57,8 @@ const buildPayload = (args: {
   acctCode: string;
   exRate: number;
 }) => {
-  const { base, invoices, totals, date, currency, acctCode, exRate } = args;
+  const { base, invoices, totals, date, currency, acctCode, exRate, shopCode } =
+    args;
   const selected = invoices
     .filter((x) => x.isChecked)
     .map((it) => {
@@ -84,6 +88,7 @@ const buildPayload = (args: {
     docCurrency: currency,
     docRate: exRate,
     paymentInvoices: selected,
+    shopCode: shopCode,
   };
 };
 
@@ -238,14 +243,16 @@ export default function AddIncomingPayment() {
 
   const handleSubmit = async () => {
     try {
-      if (!acctCode) return toast.error("Выберите cчет!");
-      if (!partnerData) return toast.error("Выберите партнера!");
+      if (!acctCode) return toast.error("Выберите cчет !");
+      if (!partnerData) return toast.error("Выберите партнера !");
+      if (!selectedShop) return toast.error("Выберите магазин !");
 
       const selected = paymentInvoices.filter((x) => x.isChecked);
       if (!selected.length)
         return toast.error("Hech bo'lmasa bitta invoys belgilang");
 
       const payload = buildPayload({
+        shopCode: selectedShop?.shopCode,
         base: partnerData,
         invoices: selected,
         totals: { totalUSD, totalUZS },
@@ -254,6 +261,8 @@ export default function AddIncomingPayment() {
         acctCode,
         exRate,
       });
+      
+      console.log(payload);
 
       setPostLoading(true);
       const json = await postInPayment(payload, sessionId);
@@ -266,6 +275,7 @@ export default function AddIncomingPayment() {
       setQ("");
       setPage(1);
       setDraftValues({});
+      setSelectedShop();
       console.log("Server:", json);
     } catch (e: any) {
       console.error(e);
@@ -325,6 +335,33 @@ export default function AddIncomingPayment() {
       });
     });
   };
+
+  // SHOP
+  const [shopModalVisible, setShopModalVisible] = useState<boolean>(false);
+  const [selectedShop, setSelectedShop] = useState<shop>();
+  const {
+    error: shopError,
+    data: shopData,
+    loading: shopLoading,
+    refetch: shopRefetch,
+  } = useFetch(
+    () =>
+      ShopsApi({
+        Page: shopPage,
+      }),
+    false
+  );
+  const [shopPage, setShopPage] = useState(1);
+
+  useEffect(() => {
+    if (shopData?.data?.totalPages) {
+      setTotalPages(shopData.data.totalPages);
+    }
+  }, [shopData]);
+  useEffect(() => {
+    shopRefetch();
+    listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [shopPage]);
 
   return (
     <div className="p-4">
@@ -571,6 +608,19 @@ export default function AddIncomingPayment() {
                 </div>
               </button>
             </div>
+            <div className="flex items-center gap-1 w-full">
+              <button
+                onClick={() => setShopModalVisible(true)}
+                className="flex items-center gap-1 w-full py-2"
+              >
+                <p className="text-sm w-full text-left">Магазин: </p>
+                <div className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 text-end">
+                  <p className="text-sm w-full text-right">
+                    {selectedShop?.shopCode} - {selectedShop?.shopName}
+                  </p>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -731,6 +781,97 @@ export default function AddIncomingPayment() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* SHOPS MODAL */}
+      <div className="relative flex justify-center items-center">
+        <div
+          style={{
+            display: shopModalVisible ? "block" : "none",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            zIndex: 50,
+          }}
+          className="w-full h-full top-0 fixed sticky-0"
+        >
+          <div className="2xl:container w-[100vw] h-[100vh] mx-auto flex justify-center items-center">
+            <div className="relative bg-white p-4 w-[560px]">
+              <div className="w-full justify-end flex mb-4">
+                <button
+                  onClick={() => setShopModalVisible(false)}
+                  aria-label="close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="w-full">
+                {shopData ? (
+                  <div
+                    ref={listRef}
+                    style={{
+                      scrollbarColor: "transparent",
+                      scrollbarWidth: "none",
+                    }}
+                    className="overflow-y-scroll h-[75vh] divide-y-0"
+                  >
+                    {shopData?.data.shops.map((item: shop, i: number) => (
+                      <div
+                        onClick={() => {
+                          setSelectedShop(item);
+                          setShopModalVisible(false);
+                        }}
+                        key={i + 1}
+                        className="m-2 gap-4 border-b border-gray-300 cursor-pointer flex items-center"
+                      >
+                        <p>{item.shopCode}</p>
+                        <p>-</p>
+                        <p>{item.shopName}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div
+                    style={{ display: shopLoading ? "flex" : "none" }}
+                    className="relative h-[75vh] flex justify-center items-center"
+                  >
+                    <RotateLoader color="black" speedMultiplier={0.8} />
+                  </div>
+                )}
+
+                {shopData && (
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      aria-label="Previous page"
+                      className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
+                      onClick={() => setShopPage((p) => Math.max(1, p - 1))}
+                      disabled={shopPage === 1}
+                    >
+                      ‹
+                    </button>
+
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-md tabular-nums">
+                      <span>{shopPage}</span>
+                      <span>/</span>
+                      <span>{totalPages}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-label="Next page"
+                      className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
+                      onClick={() =>
+                        setShopPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      disabled={shopPage === totalPages}
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

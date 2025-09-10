@@ -112,3 +112,44 @@ export interface CurrentExchangeRateResponse {
   rate: number;
   rateDate: string;
 }
+
+export interface accountingTransaction {
+  memo: string;
+  referenceDate: string;
+  shopCode: string;
+  journalEntryLines: journalEntryLinesForApi[];
+}
+
+export interface journalEntryLines {
+  accountCode: string | null;
+  accountName: string;
+  bplid: number;
+  credit: number;
+  debit: number;
+  fccredit: number;
+  fcdebit: number;
+  shortName: string;
+}
+export interface journalEntryLinesForApi {
+  accountCode: string | null;
+  bplid: number;
+  credit: number;
+  debit: number;
+  fccredit: number;
+  fcdebit: number;
+  shortName: string;
+}
+export interface ShopsResponse {
+  status: string;
+  data: {
+    shops: shop[];
+    pageSize: number;
+    totalPages: number;
+    currentPage: number;
+  };
+  error: any;
+}
+export interface shop {
+  shopCode: string;
+  shopName: string;
+}

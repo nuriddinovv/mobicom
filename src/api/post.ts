@@ -1,6 +1,10 @@
 const API = "http://212.83.191.99:5000";
 
-import type { loginInterface, loginResponse } from "../interfaces";
+import type {
+  accountingTransaction,
+  loginInterface,
+  loginResponse,
+} from "../interfaces";
 
 export async function loginUser({ username, password }: loginInterface) {
   const response = await fetch(`${API}/Login`, {
@@ -20,15 +24,12 @@ export async function loginUser({ username, password }: loginInterface) {
 }
 
 export async function PaymentOpenPostApi({ data, sessionId }) {
-  console.log(data);
-  console.log(sessionId);
-
   const response = await fetch(`http://212.83.191.99:5000/InPayments`, {
     method: "POST",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      Cookie: sessionId,  
+      Cookie: sessionId,
     },
     body: JSON.stringify(data),
   });
@@ -36,4 +37,17 @@ export async function PaymentOpenPostApi({ data, sessionId }) {
 
   return result;
 }
+export async function JournalEntryApi({ data, sessionId }) {
+  const response = await fetch(`http://212.83.191.99:5000/JournalEntries`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Cookie: sessionId,
+    },
+    body: JSON.stringify(data),
+  });
+  const result: accountingTransaction = await response.json();
 
+  return result;
+}

@@ -4,6 +4,7 @@ import type {
   PaymentsResponse,
   PaymentResponse,
   CurrentExchangeRateResponse,
+  ShopsResponse,
 } from "../interfaces";
 
 const API = "http://212.83.191.99:5000";
@@ -44,10 +45,16 @@ export async function ChartOfAccountsApi({
   Query: string | null;
   Curr: string | null;
 }) {
-  const url =
-    Query !== null
-      ? `${API}/ChartOfAccounts?q=${Query}&curr=${Curr}`
-      : `${API}/ChartOfAccounts?curr=${Curr}`;
+  let url = `${API}/ChartOfAccounts`;
+
+  // agar Query berilgan bo‘lsa, qo‘shamiz
+  const params: string[] = [];
+  if (Query) params.push(`q=${encodeURIComponent(Query)}`);
+  if (Curr) params.push(`curr=${encodeURIComponent(Curr)}`);
+
+  if (params.length > 0) {
+    url += `?${params.join("&")}`;
+  }
 
   const response = await fetch(url, {
     method: "GET",
@@ -57,8 +64,8 @@ export async function ChartOfAccountsApi({
       Cookie: sessionId,
     },
   });
-  const result: chartOfAccountsResponse[] = await response.json();
 
+  const result: chartOfAccountsResponse[] = await response.json();
   return result;
 }
 
@@ -186,6 +193,22 @@ export async function OutgoingPaymentOpenApi({
     }
   );
   const result: PaymentResponse = await response.json();
+
+  return result;
+}
+
+export async function ShopsApi({ Page }: { Page: number }) {
+  const response = await fetch(
+    `http://212.83.191.99:5000/Shops?&page=${Page}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  const result: ShopsResponse = await response.json();
 
   return result;
 }
