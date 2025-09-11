@@ -1,12 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import useFetch from "../api/useFetch";
 import { BusinessPartnersApi } from "../api/get";
-import type { businessPartnersResponse } from "../interfaces";
+import type { businesParters } from "../interfaces";
+import { RotateLoader } from "react-spinners";
+import CustomLoader from "../components/CustomLoader";
 
 export default function Clients() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [typing, setTyping] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const { loading, error, data, refetch } = useFetch(() =>
+    BusinessPartnersApi({ sessionId: sessionId ?? "", Query: q, Page: page })
+  );
 
   useEffect(() => {
     if (typing) {
@@ -20,26 +29,33 @@ export default function Clients() {
   useEffect(() => {
     if (!typing && q !== "") {
       refetch();
+      setPage(1);
     }
   }, [typing, q]);
+
+  useEffect(() => {
+    if (data?.data?.totalPages) {
+      setTotalPages(data.data.totalPages);
+    }
+  }, [data?.data.totalPages]);
 
   useEffect(() => {
     const sid = sessionStorage.getItem("sessionId");
     setSessionId(sid);
   }, []);
 
-  const { loading, error, data, refetch } = useFetch(
-    () => BusinessPartnersApi({ sessionId: sessionId ?? "", Query: q }),
-    false
-  );
+  useEffect(() => {
+    refetch();
+    listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page]);
+
+  useEffect(() => {
+    if (q === "") refetch();
+  }, [q]);
 
   useEffect(() => {
     if (sessionId) refetch();
   }, [sessionId]);
-
-  useEffect(() => {
-    if (sessionId && q === "") refetch();
-  }, [sessionId, q]);
 
   return (
     <div className="container mx-auto px-4">
@@ -100,14 +116,17 @@ export default function Clients() {
       {/* Kontent */}
       <div className="">
         {loading && (
-          <div className="py-10 text-center text-gray-500">Yuklanmoqda...</div>
+          <div className="">
+            <CustomLoader />
+          </div>
         )}
         {error && (
           <div className="py-10 text-center text-red-600">{error.message}</div>
         )}
-        {!error && !loading && sessionId && data && (
+        {data && (
           <div
-            className="overflow-x-auto max-h-[85vh] rounded-lg border border-gray-200 bg-white shadow-sm"
+            ref={listRef}
+            className="overflow-x-auto max-h-[80vh] rounded-lg border border-gray-200 bg-white shadow-sm"
             style={{ scrollbarColor: "transparent", scrollbarWidth: "none" }}
           >
             <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -134,19 +153,52 @@ export default function Clients() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {data.map((item: businessPartnersResponse, idx: number) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 text-gray-900">{item.cardName}</td>
-                    <td className="px-6 py-3 text-right text-gray-700">
-                      {item.balance.toLocaleString()} $
-                    </td>
-                    <td className="px-6 py-3 text-right text-gray-700">
-                      {item.balanceFC.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {data?.data.businessPartners.map(
+                  (item: businesParters, idx: number) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="px-6 py-3 text-gray-900">
+                        {item.cardName}
+                      </td>
+                      <td className="px-6 py-3 text-right text-gray-700">
+                        {item.balance.toLocaleString()} $
+                      </td>
+                      <td className="px-6 py-3 text-right text-gray-700">
+                        {item.balanceFC.toLocaleString()}
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
+          </div>
+        )}
+        {data && (
+          <div className="flex justify-center my-2">
+            <button
+              type="button"
+              aria-label="Previous page"
+              className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              ‹
+            </button>
+
+            <div className="flex items-center gap-2 px-3 py-1 rounded-md tabular-nums">
+              <span>{page}</span>
+              <span>/</span>
+              <span>{totalPages}</span>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Next page"
+              className="px-4 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:hover:bg-white transition-colors"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              ›
+            </button>
           </div>
         )}
       </div>
