@@ -213,7 +213,17 @@ export async function ShopsApi({ Page }: { Page: number }) {
 
   return result;
 }
-export async function JournalEntriesApi({ Page }: { Page: number }) {
+export async function JournalEntriesApi({
+  Page,
+  DateTo,
+  DateFrom,
+  Q,
+}: {
+  Page: number;
+  DateTo: string;
+  DateFrom: string;
+  Q: string;
+}) {
   const response = await fetch(
     `http://212.83.191.99:5000/JournalEntries?&page=${Page}`,
     {

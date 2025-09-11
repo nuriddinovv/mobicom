@@ -234,9 +234,73 @@ export default function AddIncomingPayment() {
   }, [page]);
 
   // Totals (faqat isChecked) — tez ishlashi uchun exRate ni son sifatida uzatdik
-  const { totalUSD, totalUZS } = useMemo(() => {
-    return calcTotals(paymentInvoices, exRate);
-  }, [paymentInvoices, exRate]);
+  const computedTotals = useMemo(
+    () => calcTotals(paymentInvoices, exRate),
+    [paymentInvoices, exRate]
+  );
+  const [useAutoTotals, setUseAutoTotals] = useState(true);
+  const [manualTotalUSD, setManualTotalUSD] = useState(""); // raw string
+  const [manualTotalUZS, setManualTotalUZS] = useState("");
+
+  const usdInputValue = useAutoTotals
+    ? computedTotals.totalUSD.toFixed(2)
+    : manualTotalUSD;
+  const uzsInputValue = useAutoTotals
+    ? Math.round(computedTotals.totalUZS).toString()
+    : manualTotalUZS;
+
+  const totalsForPayload = useMemo(() => {
+    if (useAutoTotals)
+      return {
+        totalUSD: computedTotals.totalUSD,
+        totalUZS: computedTotals.totalUZS,
+      };
+    const usd = Number(manualTotalUSD.replace(",", ".")) || 0;
+    const uzs = Math.round(Number(manualTotalUZS.replace(/[^\d.-]/g, "")) || 0);
+    return { totalUSD: Math.round(usd * 100) / 100, totalUZS: uzs };
+  }, [useAutoTotals, computedTotals, manualTotalUSD, manualTotalUZS]);
+
+  const onUsdChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const raw = e.target.value;
+    setUseAutoTotals(false); // manualga o'tish
+    setManualTotalUSD(raw);
+    const n = Number(raw.replace(",", "."));
+    if (Number.isFinite(n)) {
+      setManualTotalUZS(String(Math.round(n * exRate)));
+    } else {
+      setManualTotalUZS("");
+    }
+  };
+  const onUzsChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const raw = e.target.value.replace(/\s/g, "");
+    setUseAutoTotals(false); // manualga o'tish
+    setManualTotalUZS(raw);
+    const n = Number(raw.replace(",", "."));
+    if (Number.isFinite(n) && exRate > 0) {
+      setManualTotalUSD((n / exRate).toFixed(2));
+    } else {
+      setManualTotalUSD("");
+    }
+  };
+
+  const onUsdBlur = () => {
+    if (manualTotalUSD === "") return;
+    const n = Number(manualTotalUSD.replace(",", "."));
+    if (Number.isFinite(n))
+      setManualTotalUSD((Math.round(n * 100) / 100).toFixed(2));
+  };
+  const onUzsBlur = () => {
+    if (manualTotalUZS === "") return;
+    const n = Number(manualTotalUZS.replace(/[^\d.-]/g, ""));
+    if (Number.isFinite(n)) setManualTotalUZS(String(Math.round(n)));
+  };
+  useEffect(() => {
+    if (!useAutoTotals) {
+      setUseAutoTotals(true);
+      setManualTotalUSD("");
+      setManualTotalUZS("");
+    }
+  }, [paymentInvoices]);
 
   // ------- Submit -------
   const [postLoading, setPostLoading] = useState(false);
@@ -248,19 +312,17 @@ export default function AddIncomingPayment() {
       if (!selectedShop) return toast.error("Выберите магазин !");
 
       const selected = paymentInvoices.filter((x) => x.isChecked);
-      if (!selected.length)
-        return toast.error("Hech bo'lmasa bitta invoys belgilang");
-
       const payload = buildPayload({
         shopCode: selectedShop?.shopCode,
         base: partnerData,
         invoices: selected,
-        totals: { totalUSD, totalUZS },
+        totals: totalsForPayload,
         date,
         currency,
         acctCode,
         exRate,
       });
+
       setPostLoading(true);
       const json = await postInPayment(payload, sessionId);
       toast.success("Success");
@@ -273,6 +335,7 @@ export default function AddIncomingPayment() {
       setPage(1);
       setDraftValues({});
       setSelectedShop();
+      console.log("Server:", json);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Произошла ошибка");
@@ -527,18 +590,21 @@ export default function AddIncomingPayment() {
                   <p className="text-sm w-full">Сумма к оплате (USD)</p>
                   <input
                     type="text"
-                    readOnly
-                    value={Number(totalUSD).toLocaleString()}
-                    className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                    value={usdInputValue}
+                    onChange={onUsdChange}
+                    onBlur={onUsdBlur}
+                    className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 text-right"
                   />
                 </div>
+
                 <div className="flex items-center gap-1 w-full">
                   <p className="text-sm w-full">Сумма к оплате (UZS)</p>
                   <input
                     type="text"
-                    readOnly
-                    value={Math.round(totalUZS).toLocaleString()}
-                    className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300"
+                    value={uzsInputValue}
+                    onChange={onUzsChange}
+                    onBlur={onUzsBlur}
+                    className="w-full border rounded-md text-sm outline-none px-1 py-0.5 border-gray-300 text-right"
                   />
                 </div>
               </div>

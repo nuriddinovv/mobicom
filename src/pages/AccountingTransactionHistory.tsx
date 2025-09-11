@@ -10,14 +10,14 @@ import toast from "react-hot-toast";
 export default function AccountingTransactionHistory() {
   const sessionId = sessionStorage.getItem("sessionId");
   const { loading, error, data, refetch } = useFetch(() =>
-    JournalEntriesApi({ Page: page })
+    JournalEntriesApi({ Page: page, Q: q, DateFrom: dateFrom, DateTo: dateTo })
   );
 
   const {
     loading: cancelLoading,
     error: cancelError,
     data: cancelData,
-    refetch: runCancel, // nomini aniqroq qildik
+    refetch: runCancel,
   } = useFetch(
     () =>
       postJournalEntryCancel({
