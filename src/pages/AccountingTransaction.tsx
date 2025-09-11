@@ -44,6 +44,7 @@ export default function AccountingTransaction() {
   const [selectedShop, setSelectedShop] = useState<shop>();
   const [comment, setComment] = useState("");
   const [postLoading, setPostLoading] = useState(false);
+
   const handleSubmit = async () => {
     try {
       if (!journalEntryLines || journalEntryLines.length === 0) {
@@ -52,6 +53,7 @@ export default function AccountingTransaction() {
       if (!selectedShop) {
         return toast.error("Выберите магазин !");
       }
+
       const sanitizedLines = journalEntryLines.map(
         ({ accountName, ...rest }) => rest
       );
@@ -62,21 +64,30 @@ export default function AccountingTransaction() {
         shopCode: selectedShop.shopCode,
         journalEntryLines: sanitizedLines,
       };
+
       setPostLoading(true);
-      // 2) POST bevosita payload bilan
+
       const json = await JournalEntryApi({ payload, sessionId });
-      if (json) {
-        toast.success("Success");
-        setAccountingTransaction({
-          memo: "",
-          referenceDate: "",
-          shopCode: "",
-          journalEntryLines: [],
-        });
-        setComment("");
-        setJournalEntryLines([]);
-        setSelectedShop(undefined);
+
+      // ✅ faqat muvaffaqiyatda o'tkazamiz
+      if (!json || json.status !== "success") {
+        const msg = json?.error?.message || "Не удалось провести проводку";
+
+        toast.error(msg);
+
+        return; // formani tozalamasdan chiqamiz
       }
+
+      toast.success("Success");
+      setAccountingTransaction({
+        memo: "",
+        referenceDate: "",
+        shopCode: "",
+        journalEntryLines: [],
+      });
+      setComment("");
+      setJournalEntryLines([]);
+      setSelectedShop(undefined);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Произошла ошибка");
@@ -273,6 +284,34 @@ export default function AccountingTransaction() {
   const [creditTotal, setCreditTotal] = useState(0);
   const [fcCreditTotal, setFcCreditTotal] = useState(0);
 
+  useEffect(() => {
+    const toNum = (v: unknown) =>
+      Number(typeof v === "string" ? v.replace(",", ".") : v) || 0;
+    const debitTotal = journalEntryLines.reduce(
+      (sum, item) => sum + toNum(item.debit),
+      0
+    );
+    setDebitTotal(Number(debitTotal.toFixed(2)));
+
+    const fcDebitTotal = journalEntryLines.reduce(
+      (sum, item) => sum + toNum(item.fcdebit),
+      0
+    );
+    setFcDebitTotal(fcDebitTotal);
+
+    const creditTotal = journalEntryLines.reduce(
+      (sum, item) => sum + toNum(item.credit),
+      0
+    );
+    setCreditTotal(Number(creditTotal.toFixed(2)));
+
+    const fcCreditTotal = journalEntryLines.reduce(
+      (sum, item) => sum + toNum(item.fccredit),
+      0
+    );
+    setFcCreditTotal(fcCreditTotal);
+  }, [journalEntryLines]);
+
   return (
     <div className="p-4 ">
       <h1 className="text-3xl font-bold mb-4 pt-4 text-center">
@@ -432,24 +471,50 @@ export default function AccountingTransaction() {
       </div>
 
       <div className="grid grid-cols-8 gap-4 w-full">
-        <button className="border grid-cols-1" onClick={handleSubmit}>
-          press
+        <button
+          className="border border-slate-300 rounded-md py-1 text-[16px] "
+          onClick={handleSubmit}
+        >
+          Отправить
         </button>
-        <button className="border col-span-3" onClick={handleSubmit}>
-          press
-        </button>
-        <button className="border grid-cols-1" onClick={handleSubmit}>
-          press
-        </button>
-        <button className="border grid-cols-1" onClick={handleSubmit}>
-          press
-        </button>
-        <button className="border grid-cols-1" onClick={handleSubmit}>
-          press
-        </button>
-        <button className="border grid-cols-1" onClick={handleSubmit}>
-          press
-        </button>
+        <input
+          onChange={(e) => setComment(e.target.value)}
+          type="text"
+          placeholder="Комментарий"
+          className="border col-span-3 border-slate-300 rounded-md p-1 text-[16px] outline-none"
+        />
+        <input
+          onChange={(e) => setFcDebitTotal(Number(e.target.value))}
+          type="text"
+          readOnly
+          value={fcDebitTotal ? fcDebitTotal : ""}
+          placeholder="Oбщий Дебет UZS"
+          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
+        />
+        <input
+          onChange={(e) => setFcCreditTotal(Number(e.target.value))}
+          type="text"
+          readOnly
+          placeholder="Oбщий Кредит UZS"
+          value={fcCreditTotal ? fcCreditTotal : ""}
+          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
+        />
+        <input
+          onChange={(e) => setDebitTotal(Number(e.target.value))}
+          type="text"
+          readOnly
+          placeholder="Oбщий Дебет"
+          value={debitTotal ? debitTotal : ""}
+          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
+        />
+        <input
+          onChange={(e) => setCreditTotal(Number(e.target.value))}
+          type="text"
+          readOnly
+          placeholder="Oбщий Кредит"
+          value={creditTotal ? creditTotal : ""}
+          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
+        />
       </div>
 
       {/* MODALS */}
