@@ -66,7 +66,6 @@ const buildPayload = (args: {
       return {
         ...rest,
         appliedSum: Number(it.appliedSum) || 0,
-        docLine: 1 as const,
       };
     });
 
@@ -526,7 +525,7 @@ export default function AddOutgoingPayment() {
 
                     return (
                       <tr
-                        key={item.invoiceDocEntry}
+                        key={idx}
                         className="bg-white border-b border-gray-200"
                       >
                         <th className="text-center">
