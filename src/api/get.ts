@@ -5,6 +5,7 @@ import type {
   PaymentResponse,
   CurrentExchangeRateResponse,
   ShopsResponse,
+  journalEntriesResponse,
 } from "../interfaces";
 
 const API = "http://212.83.191.99:5000";
@@ -209,6 +210,21 @@ export async function ShopsApi({ Page }: { Page: number }) {
     }
   );
   const result: ShopsResponse = await response.json();
+
+  return result;
+}
+export async function JournalEntriesApi({ Page }: { Page: number }) {
+  const response = await fetch(
+    `http://212.83.191.99:5000/JournalEntries?&page=${Page}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  const result: journalEntriesResponse = await response.json();
 
   return result;
 }

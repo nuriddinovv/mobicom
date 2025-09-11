@@ -153,3 +153,25 @@ export interface shop {
   shopCode: string;
   shopName: string;
 }
+
+export interface journalEntriesResponse {
+  status: string;
+  data: {
+    journalEntries: journalEntries[];
+    pageSize: number;
+    totalPages: number;
+    currentPage: number;
+  };
+  error: any;
+}
+export interface journalEntries {
+  memo: string;
+  referenceDate: string;
+  jdtNum: number;
+  shopCode: string;
+  shopName: string;
+  reference2: any;
+  docTotal: number;
+  docTotalFC: number;
+  journalEntryLines: [];
+}

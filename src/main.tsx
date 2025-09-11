@@ -15,6 +15,7 @@ import AddIncomingPayment from "./pages/IncomingPayments/AddIncomingPayment";
 import AddOutgoingPayment from "./pages/OutgoingPayments/AddOutgoingPayment";
 import OutgoingPaymentID from "./pages/OutgoingPayments/OutgoingPaymentID";
 import OutgoingPayment from "./pages/OutgoingPayments/OutgoingPayment";
+import AccountingTransactionHistory from "./pages/AccountingTransactionHistory";
 
 const router = createBrowserRouter([
   { path: "/", element: <Login /> },
@@ -47,6 +48,14 @@ const router = createBrowserRouter([
     element: (
       <Protected>
         <AccountingTransaction />
+      </Protected>
+    ),
+  },
+  {
+    path: "/accounting-transaction-history",
+    element: (
+      <Protected>
+        <AccountingTransactionHistory />
       </Protected>
     ),
   },

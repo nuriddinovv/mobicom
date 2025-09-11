@@ -7,6 +7,7 @@ import { formatDate } from "../../utils/formatDate";
 import { PaymentApi } from "../../api/get";
 import toast from "react-hot-toast";
 import { SyncLoader } from "react-spinners";
+import { postPaymentCancel } from "../../api/post";
 
 export default function IncomingPaymentID() {
   const { id } = useParams();
@@ -25,40 +26,6 @@ export default function IncomingPaymentID() {
   const [modalLoading, setModalLoading] = useState(false);
   const [type, setType] = useState<"CUSTOMER" | "SUPPLIER">("CUSTOMER");
 
-  // ---- Cancel API helper
-  const postPaymentCancel = async ({
-    id,
-    sessionId,
-  }: {
-    id: number | string;
-    sessionId: string | null;
-  }) => {
-    const res = await fetch(`/api/InPayments/${id}/Cancel`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "X-Session-Id": sessionId ?? "",
-      },
-    });
-
-    const text = await res.text();
-    let json: any = null;
-    try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      /* server oddiy matn qaytargan bo‘lishi mumkin */
-    }
-
-    if (!res.ok) {
-      const msg =
-        json?.error?.message || json?.message || text || `HTTP ${res.status}`;
-      throw new Error(msg);
-    }
-    return json ?? { ok: true };
-  };
-
-  // ---- Cancel button handler
   const CancelPayment = async () => {
     setModalLoading(true);
     const docEntry = data?.data?.docEntry;

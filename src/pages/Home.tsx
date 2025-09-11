@@ -6,23 +6,23 @@ import CustomLoader from "../components/CustomLoader";
 import toast from "react-hot-toast";
 
 export default function Home() {
-  const sessionID = sessionStorage.getItem("sessionId");
+  const sessionId = sessionStorage.getItem("sessionId");
 
   const { loading, error, data, refetch } = useFetch(
-    () => CurrentExchangeRateApi({ sessionId: sessionID || '11' }),
+    () => CurrentExchangeRateApi({ sessionId: sessionId || "11" }),
     false
   );
   useEffect(() => {
-    if (sessionID) {
-      refetch();
-    }
-  }, [sessionID]);
+    refetch();
+  }, [sessionId]);
 
   useEffect(() => {
-    if (data) {
+    if (!loading && !error && data?.rate != null) {
       localStorage.setItem("CurrentExchangeRate", data.rate.toString());
+    } else if (!loading && !data?.rate && error) {
+      toast.error("Не удалось получить oбменный курс");
     }
-  }, [data]);
+  }, [loading, error, data]);
 
   return (
     <div className="container">

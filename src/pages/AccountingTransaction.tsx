@@ -12,6 +12,7 @@ import type {
 import { RotateLoader } from "react-spinners";
 import toast from "react-hot-toast";
 import { JournalEntryApi } from "../api/post";
+import CustomLoader from "../components/CustomLoader";
 
 const todayStr = () => {
   const d = new Date();
@@ -313,8 +314,16 @@ export default function AccountingTransaction() {
   }, [journalEntryLines]);
 
   return (
-    <div className="p-4 ">
-      <h1 className="text-3xl font-bold mb-4 pt-4 text-center">
+    <div className="p-4">
+      {postLoading && <CustomLoader />}
+      <h1
+        className="text-3xl font-bold mb-2 text-center cursor-pointer select-none"
+        onClick={(e) => {
+          if (e.ctrlKey || e.metaKey) {
+            navigate("/accounting-transaction-history");
+          }
+        }}
+      >
         Бухгалтерская операция
       </h1>
 
@@ -325,30 +334,27 @@ export default function AccountingTransaction() {
           onChange={(e) => {
             setdate(e.target.value.toString());
           }}
-          className="w-full border rounded-md p-1 text-sm outline-none"
+          className="w-full border rounded-md p-1 border-slate-300 text-sm outline-none"
           placeholder="Дата"
         />
         <input
           readOnly
-          className="w-full border rounded-md p-1 text-sm outline-none"
-          placeholder="ссылка 1"
+          className="w-full  rounded-md p-1 text-sm outline-none"
         />
         <input
-          className="w-full border rounded-md p-1 text-sm outline-none"
+          className="w-full border rounded-md p-1 border-slate-300 text-sm outline-none"
           placeholder="ссылка 2"
         />
-        <input
-          readOnly
-          className="w-full border rounded-md p-1 text-sm outline-none"
-          placeholder="ссылка 3"
-        />
+        <div className="text-center">
+          <p>Курс: {rate.toLocaleString()} UZS</p>
+        </div>
         <input
           type="text"
           onClick={() => {
             setShopModalVisible(true);
           }}
           readOnly
-          className="w-full border rounded-md p-1 text-sm outline-none"
+          className="w-full border rounded-md p-1 border-slate-300 text-sm outline-none"
           placeholder={
             selectedShop?.shopName ? selectedShop.shopName : "Выберите магазин"
           }
