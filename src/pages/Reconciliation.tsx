@@ -3,8 +3,9 @@ import { RotateLoader } from "react-spinners";
 import { ChartOfAccountsApi, ReconciliationApi } from "../api/get";
 import useFetch from "../api/useFetch";
 import { useNavigate } from "react-router-dom";
-import type { chartOfAccountsResponse } from "../interfaces";
+import type { chartOfAccountsResponse, reconciliation } from "../interfaces";
 import { formatDate } from "../utils/formatDate";
+import CustomLoader from "../components/CustomLoader";
 
 export default function Reconciliation() {
   const navigate = useNavigate();
@@ -13,17 +14,35 @@ export default function Reconciliation() {
     navigate("/");
   }
   const [account, setAccount] = useState<chartOfAccountsResponse>();
-  const [total, setTotal] = useState(123);
-
+  const [activeAccount, setActiveAccount] = useState(false);
+  const [postData, setPostData] = useState<reconciliation[]>();
+  const [selectedCardCode, setSelectedCardCode] = useState<string | undefined>(
+    "3130_31"
+  );
   const { data, loading, error, refetch } = useFetch(() =>
     ReconciliationApi({
-      CardCode: selectedCardCode,
+      CardCode: selectedCardCode?.toString(),
     })
   );
 
-  const [selectedCardCode, setSelectedCardCode] = useState<string | null>(
-    "3130_31"
-  );
+  useEffect(() => {
+    refetch();
+    if (data) {
+      setPostData(data.data);
+    }
+  }, [selectedCardCode]);
+
+  // total
+  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    if (postData && postData.length > 0) {
+      const sum = postData.reduce(
+        (acc, item) => acc + (item.appliedSum || 0),
+        0
+      );
+      setTotal(sum);
+    }
+  }, [postData, data]);
 
   // chart of accounts
   const [chartsModalVisible, setChartsModalVisible] = useState(false);
@@ -58,6 +77,7 @@ export default function Reconciliation() {
 
   return (
     <div className="p-4 h-full">
+      {loading && <CustomLoader />}
       <div
         style={{ scrollbarColor: "transparent", scrollbarWidth: "none" }}
         className="overflow-x-auto overflow-y-auto rounded-md w-full h-[90vh] border border-gray-200"
@@ -65,20 +85,12 @@ export default function Reconciliation() {
         <table className="text-sm text-left w-full">
           <thead className="sticky top-0 z-10 bg-gray-100 uppercase">
             <tr>
-              <th className="py-2 px-2 whitespace-nowrap text-center">
-                Object code
-              </th>
-              <th className="py-2 px-2 whitespace-nowrap text-center">
-                Object name
-              </th>
-              <th className="py-2 px-2 whitespace-nowrap text-center">
-                Num at card
-              </th>
+              <th className="py-2 px-2 text-center">Object code</th>
+              <th className="py-2 px-2 text-center">Object code</th>
+              <th className="py-2 px-2 text-center">Object name</th>
+              <th className="py-2 px-2 text-center">Num at card</th>
               <th className="py-2 px-6 whitespace-nowrap text-center">
                 Card code
-              </th>
-              <th className="py-2 px-4 whitespace-nowrap text-center">
-                Credit or debit
               </th>
               <th className="py-2 px-2 whitespace-nowrap text-center">
                 Doc entry
@@ -94,22 +106,27 @@ export default function Reconciliation() {
                 Open sum
               </th>
               <th className="py-2 px-2 whitespace-nowrap text-center">
+                Applied sum
+              </th>
+              <th className="py-2 px-2 whitespace-nowrap text-center">
                 transid
               </th>
               <th className="py-2 px-2 whitespace-nowrap text-center">
                 Shop code
-              </th>
-              <th className="py-2 px-2 whitespace-nowrap text-center">
-                Shop name
-              </th>
-              <th className="py-2 px-2 whitespace-nowrap text-center">
-                Doc line
               </th>
             </tr>
           </thead>
           <tbody>
             {data?.data.map((item, idx) => (
               <tr key={idx} className="border-b border-gray-200">
+                <td>
+                  <input
+                    type="checkbox"
+                    className="cursor-pointer"
+                    // checked={!!item.isChecked}
+                    // onChange={(e) => handleCheck(idx, e.target.checked)}
+                  />
+                </td>
                 <td className="px-1 border-x-1 text-center border-gray-200">
                   {item.objectCode}
                 </td>
@@ -122,9 +139,7 @@ export default function Reconciliation() {
                 <td className="px-1 border-x-1 text-center border-gray-200">
                   {item.cardCode}
                 </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.creditOrDebit}
-                </td>
+
                 <td className="px-1 border-x-1 text-center border-gray-200">
                   {item.invoiceDocEntry}
                 </td>
@@ -141,40 +156,66 @@ export default function Reconciliation() {
                   {item.openSum}
                 </td>
                 <td className="px-1 border-x-1 text-center border-gray-200">
+                  <input
+                    type="number"
+                    defaultValue={item.openSum}
+                    className="outline-none text-right w-24"
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setPostData((prev) =>
+                        prev.map((row, i) =>
+                          i === idx ? { ...row, appliedSum: value } : row
+                        )
+                      );
+                    }}
+                  />
+                </td>
+                <td className="px-1 border-x-1 text-center border-gray-200">
                   {item.transId}
                 </td>
                 <td className="px-1 border-x-1 text-center border-gray-200">
                   {item.shopCode}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.shopName}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.docLine}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="grid grid-cols-2 h-full mt-4 ">
-        <div className="flex gap-4 items-center">
-          <input id="activeAccount" className="text-[16px]" type="checkbox" />
-          <label htmlFor="activeAccount" className="text-[16px]">
-            Cчет:{" "}
-          </label>
-          <p
-            onClick={() => {
-              setChartsModalVisible(true);
-            }}
-            className="text-[16px]"
-          >
-            {account?.acctName ? account.acctName : "Выберите счет"}
-          </p>
-        </div>
-        <div className="flex gap-4 items-center">
-          <p className="text-[16px] min-w-12">Total: {total}</p>
-          <button>Otpravit</button>
+      <div className="flex justify-between">
+        <div className=""></div>
+        <div className="grid grid-cols-2 h-full mt-4 ">
+          <div className="flex justify-between gap-4 items-center w-[45vw]">
+            <div className="flex items-center gap-4">
+              <input
+                id="activeAccount"
+                className="text-[16px]"
+                type="checkbox"
+                checked={activeAccount}
+                onChange={(e) => setActiveAccount(e.target.checked)}
+              />
+              <label htmlFor="activeAccount" className="text-[16px]">
+                Cчет:{" "}
+              </label>
+              <p
+                onClick={() => {
+                  setChartsModalVisible(true);
+                }}
+                className="text-[16px]"
+              >
+                {account?.acctName ? account.acctName : "Выберите счет"}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4 items-center">
+            <p className="text-[16px] min-w-12">Total: {total}</p>
+            <button
+              onClick={() => {
+                console.log(postData);
+              }}
+            >
+              Otpravit
+            </button>
+          </div>
         </div>
       </div>
 
