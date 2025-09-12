@@ -685,7 +685,7 @@ export default function AccountingTransaction() {
                   </div>
                 ) : (
                   <div
-                    style={{ display: partnersLoading ? "flex" : "none" }}
+                    style={{ display: chartLoading ? "flex" : "none" }}
                     className="relative h-[75vh] flex justify-center items-center"
                   >
                     <RotateLoader color="black" speedMultiplier={0.8} />

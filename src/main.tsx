@@ -8,7 +8,6 @@ import { Toaster } from "react-hot-toast";
 import Clients from "./pages/Clients";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
 import IncomingPayment from "./pages/IncomingPayments/IncomingPayment";
-import Verification from "./pages/Verification";
 import AccountingTransaction from "./pages/AccountingTransaction";
 import IncomingPaymentID from "./pages/IncomingPayments/IncomingPaymentID";
 import AddIncomingPayment from "./pages/IncomingPayments/AddIncomingPayment";
@@ -16,6 +15,7 @@ import AddOutgoingPayment from "./pages/OutgoingPayments/AddOutgoingPayment";
 import OutgoingPaymentID from "./pages/OutgoingPayments/OutgoingPaymentID";
 import OutgoingPayment from "./pages/OutgoingPayments/OutgoingPayment";
 import AccountingTransactionHistory from "./pages/AccountingTransactionHistory";
+import Reconciliation from "./pages/Reconciliation";
 
 const router = createBrowserRouter([
   { path: "/", element: <Login /> },
@@ -108,10 +108,10 @@ const router = createBrowserRouter([
     ),
   },
   {
-    path: "/verification",
+    path: "/reconciliation",
     element: (
       <Protected>
-        <Verification />
+        <Reconciliation />
       </Protected>
     ),
   },

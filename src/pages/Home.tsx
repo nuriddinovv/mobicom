@@ -127,7 +127,7 @@ export default function Home() {
           </div>
           <div className="rounded-md bg-gray-50 shadow-sm sm:mx-2 flex flex-col items-center justify-center text-center">
             <Link
-              to={"/verification"}
+              to={"/reconciliation"}
               className="flex flex-col items-center justify-center w-full h-full py-6"
             >
               <svg

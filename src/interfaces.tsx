@@ -175,3 +175,27 @@ export interface journalEntries {
   docTotalFC: number;
   journalEntryLines: [];
 }
+export interface reconciliationApi {
+  status: string;
+  data: reconciliation[];
+  error: any;
+}
+export interface reconciliation {
+  invoiceDocEntry: number;
+  invoiceDocNum: number;
+  invoiceDate: string;
+  invoiceTotal: number;
+  appliedSum: number;
+  openSum: number;
+  objectCode: string;
+  objectName: string;
+  shopCode: string;
+  shopName: string;
+  numAtCard: string;
+  currency: string | null;
+  isForeignCurrency: string | null;
+  docLine: number;
+  transId: number;
+  cardCode: string;
+  creditOrDebit: string;
+}

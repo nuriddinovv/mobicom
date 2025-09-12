@@ -6,6 +6,7 @@ import type {
   CurrentExchangeRateResponse,
   ShopsResponse,
   journalEntriesResponse,
+  reconciliationApi,
 } from "../interfaces";
 
 const API = "http://212.83.191.99:5000";
@@ -235,6 +236,22 @@ export async function JournalEntriesApi({
     }
   );
   const result: journalEntriesResponse = await response.json();
+
+  return result;
+}
+
+export async function ReconciliationApi({ CardCode }: { CardCode: string }) {
+  const response = await fetch(
+    `http://212.83.191.99:5000/Reconciliation/Open/${CardCode}`,
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  const result: reconciliationApi = await response.json();
 
   return result;
 }
