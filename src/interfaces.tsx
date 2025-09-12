@@ -181,6 +181,7 @@ export interface reconciliationApi {
   error: any;
 }
 export interface reconciliation {
+  isChecked: boolean;
   invoiceDocEntry: number;
   invoiceDocNum: number;
   invoiceDate: string;

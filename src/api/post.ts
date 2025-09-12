@@ -4,6 +4,7 @@ import type {
   accountingTransaction,
   loginInterface,
   loginResponse,
+  reconciliation,
 } from "../interfaces";
 
 export async function loginUser({ username, password }: loginInterface) {
@@ -106,6 +107,38 @@ export const postJournalEntryCancel = async ({
   } catch {
     /* server oddiy matn qaytargan bo‘lishi mumkin */
   }
+
+  if (!res.ok) {
+    const msg =
+      json?.error?.message || json?.message || text || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return json ?? { ok: true };
+};
+export const postReconciliation = async ({
+  payload,
+  sessionId,
+}: {
+  payload: reconciliation[];
+  sessionId: string | null;
+}) => {
+  console.log(payload);
+
+  const res = await fetch(`/api/Reconciliation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "X-Session-Id": sessionId ?? "",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let json: any = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {}
 
   if (!res.ok) {
     const msg =
