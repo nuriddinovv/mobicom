@@ -66,7 +66,6 @@ const buildPayload = (args: {
       return {
         ...rest,
         appliedSum: Number(it.appliedSum) || 0,
-        docLine: 1 as const,
       };
     });
 
