@@ -36,16 +36,18 @@ export default function Reconciliation() {
         numAtCard: x.numAtCard,
         currency: x.currency,
         isForeignCurrency: x.isForeignCurrency,
-        docLine: x.docLine, // agar backend ketma-ket bo‘lishini talab qilsa, i bo‘yicha berib chiqish mumkin
+        docLine: x.docLine,
         transId: x.transId,
         cardCode: x.cardCode,
         creditOrDebit: x.creditOrDebit,
       }));
 
     return {
-      docDate: todayStr(), // "2025-09-12"
-      cardCode: partnerData?.cardCode ?? "", // "К00887"
-      paymentInvoices: invoices, // faqat checked bo'lganlar
+      docTotal: activeAccount ? total : null,
+      account: activeAccount ? account?.acctCode : null,
+      docDate: todayStr(),
+      cardCode: partnerData?.cardCode ?? "",
+      paymentInvoices: invoices,
     };
   };
   const navigate = useNavigate();
@@ -64,16 +66,24 @@ export default function Reconciliation() {
       }),
     false
   );
-
   useEffect(() => {
     if (partnerData?.cardCode) {
       refetch();
     }
-    if (data) {
-      setPostData(data.data);
-    }
-  }, [partnerData]);
+  }, [partnerData?.cardCode]);
 
+  // 2) data yangilanganda - postData'ni to'ldirish (default fieldlar bilan)
+  useEffect(() => {
+    if (data?.data) {
+      setPostData(
+        data.data.map((row: reconciliation) => ({
+          ...row,
+          isChecked: row.isChecked ?? false,
+          appliedSum: row.openSum ?? 0,
+        }))
+      );
+    }
+  }, [data]);
   // total
   const [total, setTotal] = useState(0);
 
@@ -150,7 +160,7 @@ export default function Reconciliation() {
   useEffect(() => {
     partnersRefetch();
     listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [partnersPage]);
+  }, [partnersPage, partnersModalVisible]);
   useEffect(() => {
     if (partnersQ === "") partnersRefetch();
   }, [partnersQ, partnersModalVisible]);
@@ -176,23 +186,15 @@ export default function Reconciliation() {
       toast.error("Пожалуйста, выберите хотя бы одну строку.");
       return;
     }
-
-    const totalSelected = checkedItems.reduce(
-      (acc, it) => acc + (Number(it.appliedSum) || 0),
-      0
-    );
-
-    if (Math.abs(totalSelected) > 1e-9) {
-      toast.error(`Сумма AppliedSum должна быть 0 (сейчас: ${totalSelected})`);
-      return;
-    }
-
     const payload = buildPayload();
-
     try {
       setPosting(true);
       await postReconciliation({ payload: payload, sessionId: sessionId });
       toast.success("Success");
+      setAccount();
+      setPostData();
+      setPartnerData();
+      setActiveAccount(false);
     } catch (e: any) {
       toast.error(e?.message || "Yuborishda xatolik.");
     } finally {
@@ -242,117 +244,126 @@ export default function Reconciliation() {
             </tr>
           </thead>
           <tbody>
-            {postData?.map((item, idx) => (
-              <tr key={idx} className="border-b border-gray-200">
-                <td className="text-center">
-                  <input
-                    type="checkbox"
-                    className="cursor-pointer"
-                    checked={!!item.isChecked}
-                    onChange={(e) => handleCheck(idx, e.target.checked)}
-                  />
-                </td>
+            {partnerData?.cardCode &&
+              postData?.map((item, idx) => (
+                <tr key={idx} className="border-b border-gray-200">
+                  <td className="text-center">
+                    <input
+                      type="checkbox"
+                      className="cursor-pointer"
+                      checked={!!item.isChecked}
+                      onChange={(e) => handleCheck(idx, e.target.checked)}
+                    />
+                  </td>
 
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.objectCode}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.objectName}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.numAtCard}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.cardCode}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.invoiceDocEntry}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.invoiceDocNum}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {formatDate(item.invoiceDate)}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.invoiceTotal}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.openSum}
-                </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.objectCode}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.objectName}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.numAtCard}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.cardCode}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.invoiceDocEntry}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.invoiceDocNum}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {formatDate(item.invoiceDate)}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.invoiceTotal}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.openSum}
+                  </td>
+                  {/* Applied sum input — controlled */}
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    <input
+                      type="text"
+                      className="outline-none text-right w-24"
+                      defaultValue={item.appliedSum.toString()}
+                      onChange={(e) => {
+                        const value =
+                          Number(e.target.value.replace(",", ".")) || 0;
+                        setPostData((prev) => {
+                          if (!prev) return prev; // safety
+                          const next = [...prev];
+                          next[idx] = { ...next[idx], appliedSum: value };
+                          return next;
+                        });
+                      }}
+                    />
+                  </td>
 
-                {/* Applied sum input — controlled */}
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  <input
-                    type="number"
-                    className="outline-none text-right w-24"
-                    onChange={(e) => {
-                      const value =
-                        Number(e.target.value.replace(",", ".")) || 0;
-                      setPostData((prev) => {
-                        if (!prev) return prev; // safety
-                        const next = [...prev];
-                        next[idx] = { ...next[idx], appliedSum: value };
-                        return next;
-                      });
-                    }}
-                  />
-                </td>
-
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.transId}
-                </td>
-                <td className="px-1 border-x-1 text-center border-gray-200">
-                  {item.shopCode}
-                </td>
-              </tr>
-            ))}
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.transId}
+                  </td>
+                  <td className="px-1 border-x-1 text-center border-gray-200">
+                    {item.shopCode}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
-      <div className="grid grid-cols-2 h-full mt-4 ">
-        <div className="w-full">
-          <p
-            onClick={() => {
-              setPartnersModalVisible(true);
-            }}
-            className="text-[16px]"
-          >
-            {partnerData?.cardName ? partnerData.cardName : "Выберите клиент "}
-          </p>
-        </div>
-        <div className="flex justify-between gap-4 items-center">
-          <div className="flex justify-between gap-4 items-center ">
-            <div className="flex items-center gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => setPartnersModalVisible(true)}
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-[16px] leading-tight"
+        >
+          {partnerData?.cardName || "Выберите клиент"}
+        </button>
+
+        {/* O'ng panel: hisob + total + yuborish */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {/* Hisob tanlash + checkbox */}
+          <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-3 py-2">
+            <label htmlFor="activeAccount" className="flex items-center gap-2">
               <input
                 id="activeAccount"
-                className="text-[16px]"
                 type="checkbox"
                 checked={activeAccount}
                 onChange={(e) => setActiveAccount(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-slate-700"
               />
-              <label htmlFor="activeAccount" className="text-[16px]">
-                Cчет:{" "}
-              </label>
-              <p
-                onClick={() => {
-                  setChartsModalVisible(true);
-                }}
-                className="text-[16px]"
-              >
-                {account?.acctName ? account.acctName : "Выберите счет"}
-              </p>
-            </div>
+              <span className="text-[16px]">Счёт</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={() => setChartsModalVisible(true)}
+              className="truncate text-[16px] underline-offset-4"
+              title={account?.acctName || "Выберите счёт"}
+            >
+              {account?.acctName || "Выберите счёт"}
+            </button>
           </div>
-          <div className="flex gap-4 items-center">
-            <p className="text-[16px] min-w-12">Total: {total}</p>
-            <button onClick={handleSubmit} disabled={posting}>
-              Otpravit
+
+          {/* Total + Yuborish */}
+          <div className="flex items-center justify-between gap-3 md:justify-end">
+            <p className="min-w-0 truncate text-[16px]">
+              <span className="">Total:</span> {total}
+            </p>
+
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={posting}
+              className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-[16px] leading-tight transition cursor-pointer"
+            >
+              Отправить
             </button>
           </div>
         </div>
       </div>
-
       {/* CHARTOFACCOUNTS DATA */}
       <div className="relative flex justify-center items-center">
         <div
@@ -422,7 +433,6 @@ export default function Reconciliation() {
           </div>
         </div>
       </div>
-
       {/* PARTNERS DATA */}
       <div className="relative flex justify-center items-center">
         <div
