@@ -196,8 +196,14 @@ export default function AddOutgoingPayment() {
   // Invoicelar keldi
   useEffect(() => {
     if (data?.data) {
-      setPaymentInvoices(data.data);
-      setDraftValues({});
+      setPaymentInvoices(
+        data.data.map((row: PaymentInvoices) => ({
+          ...row,
+          // openSum ni son qilib, yo'q bo'lsa 0
+          appliedSum: Number(String(row.openSum).replace(/[^\d.-]/g, "")) || 0,
+        }))
+      );
+      setDraftValues({}); // xohlasangiz saqlab qo'ymang
     }
   }, [data]);
 
@@ -311,9 +317,6 @@ export default function AddOutgoingPayment() {
       if (!selectedShop) return toast.error("Выберите магазин !");
 
       const selected = paymentInvoices.filter((x) => x.isChecked);
-      if (!selected.length)
-        return toast.error("Hech bo'lmasa bitta invoys belgilang");
-
       const payload = buildPayload({
         shopCode: selectedShop?.shopCode,
         base: partnerData,
@@ -375,11 +378,11 @@ export default function AddOutgoingPayment() {
   // Blur/Enter — son qilib clamp + state’ga qo‘llaymiz (startTransition bilan)
   const commitDraft = (
     idx: number,
-    id: number,
     minVal: number,
-    maxVal: number
+    maxVal: number,
+    rawFromInput?: string
   ) => {
-    const raw = draftValues[id];
+    const raw = rawFromInput ?? draftValues[idx];
     const n = raw === "" || raw == null ? 0 : Number(raw.replace(",", "."));
     const clamped = Number.isFinite(n) ? clamp(n, minVal, maxVal) : 0;
 
@@ -390,11 +393,12 @@ export default function AddOutgoingPayment() {
         return next;
       });
       setDraftValues((prev) => {
-        const { [id]: _, ...rest } = prev;
+        const { [idx]: _, ...rest } = prev;
         return rest;
       });
     });
   };
+
   // SHOP
   const [shopModalVisible, setShopModalVisible] = useState<boolean>(false);
   const [selectedShop, setSelectedShop] = useState<shop>();
@@ -455,12 +459,6 @@ export default function AddOutgoingPayment() {
                 />
               </div>
             </div>
-
-            {/* Agar kerak bo‘lsa qayta yoqing
-            <div className="col-span-2 mx-auto">
-              <PartyType value={type} onChange={setType} />
-            </div> */}
-
             <div className="flex flex-col col-span-3 gap-1">
               <div className="flex items-center gap-6 w-full">
                 <p className="text-sm w-full">#</p>
@@ -483,7 +481,10 @@ export default function AddOutgoingPayment() {
           </div>
 
           <div className="p-1">
-            <div className="overflow-x-auto overflow-y-auto rounded-md w-full h-[50vh] border border-gray-200">
+            <div
+              className="overflow-x-auto overflow-y-auto rounded-md w-full h-[65vh]  border border-gray-200"
+              style={{ scrollbarColor: "transparent", scrollbarWidth: "none" }}
+            >
               <table className="text-sm text-left w-full">
                 <thead className="sticky top-0 z-10 bg-gray-100 uppercase">
                   <tr>
@@ -517,12 +518,8 @@ export default function AddOutgoingPayment() {
                 <tbody>
                   {paymentInvoices?.map((item, idx) => {
                     const absOpen = Math.abs(Number(item.openSum) || 0);
-                    const minVal = -absOpen; // manfiy ruxsat
+                    const minVal = -absOpen;
                     const maxVal = absOpen;
-                    const idKey = item.invoiceDocEntry; // draft map uchun kalit
-                    const shownValue =
-                      draftValues[idKey] ?? (item.appliedSum ?? "").toString();
-
                     return (
                       <tr
                         key={idx}
@@ -559,19 +556,27 @@ export default function AddOutgoingPayment() {
                             className="outline-none text-right w-24"
                             min={minVal}
                             max={maxVal}
-                            value={shownValue}
+                            value={
+                              draftValues[idx] ??
+                              (item.appliedSum !== undefined &&
+                              item.appliedSum !== null
+                                ? String(item.appliedSum)
+                                : "")
+                            }
                             onChange={(e) => {
-                              // faqat draftni yangilaymiz -> lag yo‘q
-                              handleDraftChange(idKey, e.target.value);
+                              handleDraftChange(idx, e.target.value);
                             }}
-                            onBlur={() => {
-                              // blurda clamp qilib massivga yozamiz
-                              commitDraft(idx, idKey, minVal, maxVal);
+                            onBlur={(e) => {
+                              commitDraft(
+                                idx,
+                                minVal,
+                                maxVal,
+                                e.currentTarget.value
+                              );
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter") {
+                              if (e.key === "Enter")
                                 (e.target as HTMLInputElement).blur();
-                              }
                             }}
                           />
                         </td>

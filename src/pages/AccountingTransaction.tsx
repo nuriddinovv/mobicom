@@ -313,6 +313,11 @@ export default function AccountingTransaction() {
     setFcCreditTotal(fcCreditTotal);
   }, [journalEntryLines]);
 
+  // qatordagi yozuvni o‘chirish
+  const removeLine = (idx: number) => {
+    setJournalEntryLines((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   return (
     <div className="p-4">
       {postLoading && <CustomLoader />}
@@ -362,65 +367,77 @@ export default function AccountingTransaction() {
       </div>
 
       <div
-        className="h-[70vh] overflow-y-auto"
+        className="h-[75vh] overflow-y-auto"
         style={{ scrollbarColor: "transparent", scrollbarWidth: "none" }}
       >
-        <table className="text-sm text-left w-full">
+        <table className="w-full table-fixed text-sm text-left border-collapse">
           <thead className="sticky top-0 z-10 bg-gray-100 uppercase">
             <tr>
-              <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
+              <th className="w-[40px] py-2 px-2 border border-slate-300 text-center">
                 No
               </th>
-              <th className="py-2 border-x border-slate-300 whitespace-nowrap flex items-center">
-                <button
-                  onClick={() => setPartnersModalVisible(true)}
-                  className="cursor-pointer w-full border-r px-2"
-                >
-                  Счет ГК
-                </button>
-                <button
-                  onClick={() => setChOfAccModalVisible(true)}
-                  className="cursor-pointer w-full  border-l px-2"
-                >
-                  Счет ГК
-                </button>
+              <th className="w-[200px] py-2 border border-slate-300">
+                <div className="flex">
+                  <button
+                    onClick={() => setPartnersModalVisible(true)}
+                    className="w-1/2 border-r px-2"
+                  >
+                    Выберите клиент
+                  </button>
+                  <button
+                    onClick={() => setChOfAccModalVisible(true)}
+                    className="w-1/2 border-l px-2"
+                  >
+                    Выберите счет
+                  </button>
+                </div>
               </th>
-              <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
+              <th className="w-[250px] py-2 border border-slate-300 text-center px-2">
                 Наименование счета ГК/БП
               </th>
-              <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
+              <th className="w-[120px] py-2 border border-slate-300 text-center px-2">
                 Дебет UZS
               </th>
-              <th className="py-2 border-x border-slate-300 text-center px-2 whitespace-nowrap">
+              <th className="w-[120px] py-2 border border-slate-300 text-center px-2">
                 Кредит UZS
               </th>
-              <th className="py-2 border-x border-slate-300 text-center px-6 whitespace-nowrap ">
+              <th className="w-[120px] py-2 border border-slate-300 text-center px-2">
                 Дебет USD
               </th>
-              <th className="py-2 border-x border-slate-300 text-center px-4 ">
+              <th className="w-[120px] py-2 border border-slate-300 text-center px-2">
                 Кредит USD
               </th>
             </tr>
           </thead>
 
-          <tbody className="overflow-y-auto min-h-[70vh]">
+          <tbody className="min-h-[75vh]">
             {journalEntryLines?.map((item, i) => (
               <tr
                 key={`${item.shortName}-${i}`}
                 className="bg-white border-b border-gray-200"
               >
-                <th className="text-center">{i + 1}</th>
+                <td className="text-center border border-gray-200 gap-2 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => removeLine(i)}
+                    aria-label="Удалить строку"
+                    title="Удалить строку"
+                    className="text-red-500 font-bold"
+                  >
+                    ✕
+                  </button>
+                  {i + 1}
+                </td>
 
-                <td className="px-1 text-[16px] border-x-1 border-gray-200 ">
+                <td className="border border-gray-200 px-1 text-[16px]">
                   {item.shortName}
                 </td>
 
-                <td className="px-1 text-[16px] border-x-1 border-gray-200 ">
+                <td className="border border-gray-200 px-1 text-[16px]">
                   {item.accountName}
                 </td>
 
-                {/* ДЕБЕТ UZS */}
-                <td className="px-1 text-[16px] border-x-1 border-gray-200 text-right">
+                <td className="border border-gray-200 px-1 text-[16px] text-right">
                   <input
                     value={item.fcdebit ?? 0}
                     onChange={(e) =>
@@ -432,8 +449,7 @@ export default function AccountingTransaction() {
                   />
                 </td>
 
-                {/* КРЕДИТ UZS */}
-                <td className="px-1 text-[16px] border-x-1 border-gray-200 text-right">
+                <td className="border border-gray-200 px-1 text-[16px] text-right">
                   <input
                     value={item.fccredit ?? 0}
                     onChange={(e) =>
@@ -445,8 +461,7 @@ export default function AccountingTransaction() {
                   />
                 </td>
 
-                {/* ДЕБЕТ USD */}
-                <td className="px-1 text-[16px] border-x-1 border-gray-200 text-right">
+                <td className="border border-gray-200 px-1 text-[16px] text-right">
                   <input
                     value={item.debit ?? 0}
                     onChange={(e) =>
@@ -458,8 +473,7 @@ export default function AccountingTransaction() {
                   />
                 </td>
 
-                {/* КРЕДИТ USD */}
-                <td className="px-1 text-[16px] border-x-1 border-gray-200 text-right">
+                <td className="border border-gray-200 px-1 text-[16px] text-right">
                   <input
                     value={item.credit ?? 0}
                     onChange={(e) =>
@@ -476,52 +490,76 @@ export default function AccountingTransaction() {
         </table>
       </div>
 
-      <div className="grid grid-cols-8 gap-4 w-full">
-        <button
-          className="border border-slate-300 rounded-md py-1 text-[16px] "
-          onClick={handleSubmit}
-        >
-          Отправить
-        </button>
-        <input
-          onChange={(e) => setComment(e.target.value)}
-          type="text"
-          placeholder="Комментарий"
-          className="border col-span-3 border-slate-300 rounded-md p-1 text-[16px] outline-none"
-        />
-        <input
-          onChange={(e) => setFcDebitTotal(Number(e.target.value))}
-          type="text"
-          readOnly
-          value={fcDebitTotal ? fcDebitTotal : ""}
-          placeholder="Oбщий Дебет UZS"
-          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
-        />
-        <input
-          onChange={(e) => setFcCreditTotal(Number(e.target.value))}
-          type="text"
-          readOnly
-          placeholder="Oбщий Кредит UZS"
-          value={fcCreditTotal ? fcCreditTotal : ""}
-          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
-        />
-        <input
-          onChange={(e) => setDebitTotal(Number(e.target.value))}
-          type="text"
-          readOnly
-          placeholder="Oбщий Дебет"
-          value={debitTotal ? debitTotal : ""}
-          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
-        />
-        <input
-          onChange={(e) => setCreditTotal(Number(e.target.value))}
-          type="text"
-          readOnly
-          placeholder="Oбщий Кредит"
-          value={creditTotal ? creditTotal : ""}
-          className="border text-right border-slate-300 rounded-md p-1 text-[16px] outline-none"
-        />
-      </div>
+      <table className="w-full table-fixed text-sm text-left border-collapse">
+        <colgroup>
+          <col className="w-[80px]" /> {/* No */}
+          <col className="w-[410px]" /> {/* Наименование */}
+          <col className="w-[120px]" /> {/* Дебет UZS */}
+          <col className="w-[120px]" /> {/* Кредит UZS */}
+          <col className="w-[120px]" /> {/* Дебет USD */}
+          <col className="w-[120px]" /> {/* Кредит USD */}
+        </colgroup>
+        <thead className="w-full">
+          <tr className="">
+            <th className="px-1">
+              <button
+                className="border border-slate-300 rounded-md py-2 text-[16px] w-full"
+                onClick={handleSubmit}
+              >
+                Отправить
+              </button>
+            </th>
+            <th className="px-1">
+              <input
+                onChange={(e) => setComment(e.target.value)}
+                type="text"
+                placeholder="Комментарий"
+                className="border col-span-3 border-slate-300 rounded-md p-2 text-[16px] outline-none w-full"
+              />
+            </th>
+            <th className="px-1">
+              <input
+                onChange={(e) => setFcDebitTotal(Number(e.target.value))}
+                type="text"
+                readOnly
+                value={fcDebitTotal ? fcDebitTotal : ""}
+                placeholder="Oбщий Дебет UZS"
+                className="border text-right border-slate-300 rounded-md p-2 text-[16px] outline-none w-full"
+              />
+            </th>
+            <th className="px-1">
+              <input
+                onChange={(e) => setFcCreditTotal(Number(e.target.value))}
+                type="text"
+                readOnly
+                placeholder="Oбщий Кредит UZS"
+                value={fcCreditTotal ? fcCreditTotal : ""}
+                className="border text-right border-slate-300 rounded-md p-2 text-[16px] outline-none w-full "
+              />
+            </th>
+            <th className="px-1">
+              <input
+                onChange={(e) => setDebitTotal(Number(e.target.value))}
+                type="text"
+                readOnly
+                placeholder="Oбщий Дебет"
+                value={debitTotal ? debitTotal : ""}
+                className="border text-right border-slate-300 rounded-md p-2 text-[16px] outline-none w-full "
+              />
+            </th>
+            <th className="px-1">
+              <input
+                onChange={(e) => setCreditTotal(Number(e.target.value))}
+                type="text"
+                readOnly
+                placeholder="Oбщий Кредит"
+                value={creditTotal ? creditTotal : ""}
+                className="border text-right border-slate-300 rounded-md p-2 text-[16px] outline-none w-full "
+              />
+            </th>
+          </tr>
+        </thead>
+      </table>
 
       {/* MODALS */}
       {/* PARTNERS DATA */}

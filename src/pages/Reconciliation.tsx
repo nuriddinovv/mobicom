@@ -207,7 +207,7 @@ export default function Reconciliation() {
       {(loading || posting) && <CustomLoader />}
       <div
         style={{ scrollbarColor: "transparent", scrollbarWidth: "none" }}
-        className="overflow-x-auto overflow-y-auto rounded-md w-full h-[90vh] border border-gray-200"
+        className="overflow-x-auto overflow-y-auto rounded-md w-full h-[85vh] border border-gray-200"
       >
         <table className="text-sm text-left w-full">
           <thead className="sticky top-0 z-10 bg-gray-100 uppercase">
@@ -277,14 +277,13 @@ export default function Reconciliation() {
                   <td className="px-1 border-x-1 text-center border-gray-200">
                     {formatDate(item.invoiceDate)}
                   </td>
-                  <td className="px-1 border-x-1 text-center border-gray-200">
+                  <td className="px-1 border-x-1 text-right border-gray-200">
                     {item.invoiceTotal}
                   </td>
-                  <td className="px-1 border-x-1 text-center border-gray-200">
+                  <td className="px-1 border-x-1 text-right border-gray-200">
                     {item.openSum}
                   </td>
-                  {/* Applied sum input — controlled */}
-                  <td className="px-1 border-x-1 text-center border-gray-200">
+                  <td className="px-1 border-x-1 text-right border-gray-200">
                     <input
                       type="text"
                       className="outline-none text-right w-24"
