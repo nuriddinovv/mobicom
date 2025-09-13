@@ -221,22 +221,30 @@ export async function JournalEntriesApi({
   Q,
 }: {
   Page: number;
-  DateTo: string;
-  DateFrom: string;
-  Q: string;
+  DateTo?: string;
+  DateFrom?: string;
+  Q?: string;
 }) {
-  const response = await fetch(
-    `http://212.83.191.99:5000/JournalEntries?&page=${Page}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  const result: journalEntriesResponse = await response.json();
+  const params = new URLSearchParams();
+  params.set("page", String(Page));
+  if (Q) params.set("q", Q);
+  if (DateFrom) params.set("dateFrom", DateFrom);
+  if (DateTo) params.set("dateTo", DateTo);
 
+  const url = `http://212.83.191.99:5000/JournalEntries?${params.toString()}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `HTTP ${response.status}`);
+  }
+  const result: journalEntriesResponse = await response.json();
   return result;
 }
 

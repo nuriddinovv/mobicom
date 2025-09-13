@@ -82,6 +82,10 @@ export default function AccountingTransactionHistory() {
       refetch();
     }
   }, [q]);
+  useEffect(() => {
+    setPage(1);
+    refetch();
+  }, [dateFrom, dateTo]);
 
   // Paging scroll top
   useEffect(() => {
@@ -101,6 +105,7 @@ export default function AccountingTransactionHistory() {
           type="search"
           onChange={(e) => {
             setQ(e.target.value);
+            setTyping(true);
           }}
           className="w-full border rounded-md border-slate-300 p-1 text-sm outline-none col-span-4"
           placeholder="search"

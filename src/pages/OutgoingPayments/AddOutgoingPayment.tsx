@@ -542,10 +542,10 @@ export default function AddOutgoingPayment() {
                         <td className="px-1 border-x border-gray-200 text-right">
                           {formatDate(item.invoiceDate)}
                         </td>
-                        <td className="px-1 border-x border-gray-200 text-center">
+                        <td className="px-1 border-x border-gray-200 text-right">
                           {item.invoiceTotal}
                         </td>
-                        <td className="px-1 border-x border-gray-200 text-center">
+                        <td className="px-1 border-x border-gray-200 text-right">
                           {item.openSum}
                         </td>
                         <td className="px-1 border-x text-right">
