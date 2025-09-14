@@ -49,8 +49,8 @@ export default function AccountingTransactionHistory() {
 
   const [selectedJdtNum, setSelectedJdtNum] = useState<number>();
 
-  const [dateFrom, setDateFrom] = useState("215");
-  const [dateTo, setDateTo] = useState("215");
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
 
   // PAGES and q
   const [q, setQ] = useState("");

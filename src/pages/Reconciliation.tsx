@@ -287,7 +287,7 @@ export default function Reconciliation() {
                     <input
                       type="text"
                       className="outline-none text-right w-24"
-                      defaultValue={item.appliedSum.toString()}
+                      value={item.appliedSum.toString() ?? 0}
                       onChange={(e) => {
                         const value =
                           Number(e.target.value.replace(",", ".")) || 0;
