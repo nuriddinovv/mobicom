@@ -9,7 +9,7 @@ import type {
   reconciliationApi,
 } from "../interfaces";
 
-const API = "http://212.83.191.99:5000";
+const API = "http://212.83.191.99:5001";
 
 export async function BusinessPartnersApi({
   sessionId,
@@ -98,8 +98,8 @@ export async function PaymentsApi({
 }) {
   const url =
     Query !== null
-      ? `http://212.83.191.99:5000/InPayments?&q=${Query}&page=${Page}`
-      : `http://212.83.191.99:5000/InPayments?&page=${Page}`;
+      ? `${API}/InPayments?&q=${Query}&page=${Page}`
+      : `${API}/InPayments?&page=${Page}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -114,7 +114,7 @@ export async function PaymentsApi({
 }
 
 export async function PaymentApi({ ID }: { ID: string | number }) {
-  const response = await fetch(`http://212.83.191.99:5000/InPayments/${ID}`, {
+  const response = await fetch(`${API}/InPayments/${ID}`, {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -127,16 +127,13 @@ export async function PaymentApi({ ID }: { ID: string | number }) {
 }
 
 export async function PaymentOpenApi({ CardCode }: { CardCode: string }) {
-  const response = await fetch(
-    `http://212.83.191.99:5000/InPayments/Open/${CardCode}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const response = await fetch(`${API}/InPayments/Open/${CardCode}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
   const result: PaymentResponse = await response.json();
 
   return result;
@@ -151,8 +148,8 @@ export async function OutgoingPaymentsApi({
 }) {
   const url =
     Query !== null
-      ? `http://212.83.191.99:5000/OutPayments?&q=${Query}&page=${Page}`
-      : `http://212.83.191.99:5000/OutPayments?&page=${Page}`;
+      ? `${API}/OutPayments?&q=${Query}&page=${Page}`
+      : `${API}/OutPayments?&page=${Page}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -167,7 +164,7 @@ export async function OutgoingPaymentsApi({
 }
 
 export async function OutgoingPaymentApi({ ID }: { ID: string | number }) {
-  const response = await fetch(`http://212.83.191.99:5000/InPayments/${ID}`, {
+  const response = await fetch(`${API}/InPayments/${ID}`, {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -184,32 +181,26 @@ export async function OutgoingPaymentOpenApi({
 }: {
   CardCode: string;
 }) {
-  const response = await fetch(
-    `http://212.83.191.99:5000/OutPayments/Open/${CardCode}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const response = await fetch(`${API}/OutPayments/Open/${CardCode}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
   const result: PaymentResponse = await response.json();
 
   return result;
 }
 
 export async function ShopsApi({ Page }: { Page: number }) {
-  const response = await fetch(
-    `http://212.83.191.99:5000/Shops?&page=${Page}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const response = await fetch(`${API}/Shops?&page=${Page}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
   const result: ShopsResponse = await response.json();
 
   return result;
@@ -231,7 +222,7 @@ export async function JournalEntriesApi({
   if (DateFrom) params.set("dateFrom", DateFrom);
   if (DateTo) params.set("dateTo", DateTo);
 
-  const url = `http://212.83.191.99:5000/JournalEntries?${params.toString()}`;
+  const url = `${API}/JournalEntries?${params.toString()}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -249,16 +240,13 @@ export async function JournalEntriesApi({
 }
 
 export async function ReconciliationApi({ CardCode }: { CardCode: string }) {
-  const response = await fetch(
-    `http://212.83.191.99:5000/Reconciliation/Open/${CardCode}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const response = await fetch(`${API}/Reconciliation/Open/${CardCode}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
   const result: reconciliationApi = await response.json();
 
   return result;

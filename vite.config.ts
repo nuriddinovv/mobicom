@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://212.83.191.99:5000",
+        target: "http://212.83.191.99:5001",
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ""), // /api/InPayments -> /InPayments

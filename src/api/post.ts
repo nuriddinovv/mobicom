@@ -1,4 +1,4 @@
-const API = "http://212.83.191.99:5000";
+const API = "http://212.83.191.99:5001";
 
 import type {
   accountingTransaction,
@@ -25,7 +25,7 @@ export async function loginUser({ username, password }: loginInterface) {
 }
 
 export async function PaymentOpenPostApi({ data, sessionId }) {
-  const response = await fetch(`http://212.83.191.99:5000/InPayments`, {
+  const response = await fetch(`${API}/InPayments`, {
     method: "POST",
     headers: {
       Accept: "application/json",
